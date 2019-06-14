@@ -3,10 +3,13 @@
 git config user.email "CI@$(hostname)"
 git config user.name "gitlab-CI"
 
-git checkout origin/master
-for i in $(git branch -r | grep exp_) ; do
-    echo Rebasing branch $i
-    git rebase $i
+git checkout master
+git pull
+
+for branch in $(git branch -r | grep exp_) ; do
+    commit=$(git show --format="%H" $branch | head -n 1)
+    echo "Processing branch $branch (commit $commit)"
+    git cherry-pick $commit
 done
 
 mkdir -p data
