@@ -1,5 +1,8 @@
 #! /usr/bin/env bash
 
+git config user.email "CI@$(hostname)"
+git config user.name "gitlab-CI"
+
 git checkout master
 for i in $(git branch -r | grep exp_) ; do
     echo Rebasing branch $i
@@ -17,4 +20,4 @@ rmdir new_data
 
 git add data data.db
 git rm -r new_data
-git commit --author "gitlab-CI <CI@$(hostname)>" -m "[AUTOMATIC COMMIT] Processing archive(s)"
+git commit -m "[AUTOMATIC COMMIT] Processing archive(s)"
