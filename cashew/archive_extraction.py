@@ -1,10 +1,9 @@
 import io
 import zipfile
 import pandas
-import os
 import datetime
 import yaml
-import re
+import sqlite3
 
 
 def read_csv(archive_name, csv_name, columns=None):
@@ -19,7 +18,7 @@ def read_yaml(archive_name, yaml_name):
     return yaml.load(archive.read(yaml_name), Loader=yaml.SafeLoader)
 
 
-def read_file(archive_name, csv_name, columns=None):
+def read_archive(archive_name, csv_name, columns=None):
     df = read_csv(archive_name, csv_name, columns)
     info = read_yaml(archive_name, 'info.yaml')
     nodes = [key for key in info if key.endswith('grid5000.fr')]
@@ -37,3 +36,8 @@ def read_file(archive_name, csv_name, columns=None):
     for core in df['core'].unique():
         df.loc[df['core'] == core, 'index'] = range(len(df[df['core'] == core]))
     return df
+
+
+def write_database(df, database_name, table_name):
+    connection = sqlite3.connect(database_name)
+    df.to_sql(table_name, connection, index=False, if_exists='append')

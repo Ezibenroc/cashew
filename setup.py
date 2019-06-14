@@ -48,6 +48,10 @@ if __name__ == '__main__':
           author='Tom Cornebize',
           author_email='tom.cornebize@gmail.com',
           packages=['cashew'],
+          entry_points={
+              'console_scripts': ['cashew = cashew.__main__:main',
+                                  ]
+          },
           install_requires=[
               'pandas',
               'pyyaml',
