@@ -3,7 +3,7 @@
 git config user.email "CI@$(hostname)"
 git config user.name "gitlab-CI"
 
-git checkout master
+git checkout origin/master
 for i in $(git branch -r | grep exp_) ; do
     echo Rebasing branch $i
     git rebase $i
