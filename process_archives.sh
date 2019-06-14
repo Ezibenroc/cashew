@@ -6,18 +6,25 @@ git config user.name "gitlab-CI"
 git checkout master
 git pull
 
+no_archive=true
 for branch in $(git branch -r | grep exp_) ; do
     commit=$(git show --format="%H" $branch | head -n 1)
     echo "Processing branch $branch (commit $commit)"
     git cherry-pick $commit
+    no_archive=false
 done
+
+if $no_archive ; then
+    echo "No new archive, aborting."
+    exit 0
+fi
 
 mkdir -p data
 
-for i in new_data/* ; do
-    echo Processing file $i
-    cashew $i result.csv data.db dgemm
-    mv $i data
+for f in new_data/* ; do
+    echo "Processing file $f"
+    cashew $f result.csv data.db dgemm
+    mv $f data
 done
 rmdir new_data
 
