@@ -1,9 +1,9 @@
-from datetime import datetime
 import argparse
 import time
 from .archive_extraction import read_archive, write_database
 from .linear_regression import update_regression
 from .version import __version__, __git_version__
+from .logger import logger
 
 
 def main_extract(args):
@@ -34,7 +34,7 @@ def main_extract(args):
     df = read_archive(args.archive_name, args.csv_name)
     write_database(df, args.database_name, **db_args)
     stop = time.time()
-    print('Processed archive %s containing %d rows in %.02f seconds' % (args.archive_name, len(df), stop-start))
+    logger.info('Processed archive %s containing %d rows in %.02f seconds' % (args.archive_name, len(df), stop-start))
 
 
 def main_stats(args):

@@ -32,6 +32,8 @@ for f in new_data/* ; do
 done
 rmdir new_data
 
-git add data data.db
+cashew stats data.db stats.csv
+
+git add data data.db stats.csv
 git rm -r new_data
 git commit -m "[AUTOMATIC COMMIT] Processing archive(s)"
