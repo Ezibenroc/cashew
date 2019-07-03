@@ -95,6 +95,10 @@ def read_nested_csv(database_name, table_name, columns=NESTED_COLUMNS):
         all_df = []
         for col in os.listdir(database_name):
             df = read_nested_csv(os.path.join(database_name, col), table_name, columns[1:])
+            try:
+                col = int(col)
+            except ValueError:
+                pass
             df[columns[0]] = col
             all_df.append(df)
         return pandas.concat(all_df)

@@ -29,7 +29,7 @@ class BasicTest(unittest.TestCase):
         df2 = df2.sort_values(by=list(sorted(df2.columns)))
         for (_, row1), (_, row2) in zip(df1.iterrows(), df2.iterrows()):
             for col in df1.columns:
-                self.assertEqual(df1[col].dtype, df2[col].dtype)
+                self.assertEqual(df1[col].dtype, df2[col].dtype, msg='column %s' % col)
                 if df1[col].dtype == dtype('float'):  # or df2[col].dtype == dtype('float'):
                     self.assertAlmostEqual(row1[col], row2[col], msg='column %s' % col)
                 else:
