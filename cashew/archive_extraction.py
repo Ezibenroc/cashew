@@ -3,6 +3,8 @@ import zipfile
 import pandas
 import datetime
 import yaml
+import os
+import shutil
 import sqlite3
 
 
@@ -38,11 +40,36 @@ def read_archive(archive_name, csv_name, columns=None):
     return df
 
 
-def write_database(df, database_name, table_name):
+def write_sql(df, database_name, table_name):
     connection = sqlite3.connect(database_name)
     df.to_sql(table_name, connection, index=False, if_exists='append')
 
 
-def read_database(database_name, table_name):
+def read_sql(database_name, table_name):
     connection = sqlite3.connect(database_name)
     return pandas.read_sql('select * from %s' % table_name, connection)
+
+
+def write_database(df, database_name, table_name, compress=False, how='sql'):
+    func = {'sql': write_sql}[how]
+    name_in_archive = 'DATABASE'
+    if compress and os.path.isfile(database_name):  # first, we need to decompress the old version
+        content = zipfile.ZipFile(database_name).read(name_in_archive)
+        with open(database_name, 'wb') as f:
+            f.write(content)
+    func(df, database_name, table_name)
+    if compress:
+        shutil.move(database_name, name_in_archive)
+        f = zipfile.ZipFile(database_name, 'w', zipfile.ZIP_DEFLATED)
+        f.write(name_in_archive, name_in_archive)
+        os.remove(name_in_archive)
+
+
+def read_database(database_name, table_name, compress=False, how='sql'):
+    func = {'sql': read_sql}[how]
+    name_in_archive = 'DATABASE'
+    if compress and os.path.isfile(database_name):  # first, we need to decompress the old version
+        content = zipfile.ZipFile(database_name).read(name_in_archive)
+        with open(database_name, 'wb') as f:
+            f.write(content)
+    return func(database_name, table_name)

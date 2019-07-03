@@ -42,20 +42,21 @@ class BasicTest(unittest.TestCase):
 
     def check_read_write_database(self, expected):
         # Writing in one operation
-        with tempfile.TemporaryDirectory() as tmpdir:
-            database_name = os.path.join(tmpdir, 'database.db')
-            table_name = 'my_table'
-            write_database(expected, database_name, table_name)
-            df = read_database(database_name, table_name)
-            self.check_dataframe_equality(expected, df)
-        # Writing in two operations
-        with tempfile.TemporaryDirectory() as tmpdir:
-            database_name = os.path.join(tmpdir, 'database.db')
-            table_name = 'my_table'
-            write_database(expected.iloc[:len(expected)//2], database_name, table_name)
-            write_database(expected.iloc[len(expected)//2:], database_name, table_name)
-            df = read_database(database_name, table_name)
-            self.check_dataframe_equality(expected, df)
+        for compress in [True, False]:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                database_name = os.path.join(tmpdir, 'database.db')
+                table_name = 'my_table'
+                write_database(expected, database_name, table_name, compress=compress)
+                df = read_database(database_name, table_name, compress=compress)
+                self.check_dataframe_equality(expected, df)
+            # Writing in two operations
+            with tempfile.TemporaryDirectory() as tmpdir:
+                database_name = os.path.join(tmpdir, 'database.db')
+                table_name = 'my_table'
+                write_database(expected.iloc[:len(expected)//2], database_name, table_name, compress=compress)
+                write_database(expected.iloc[len(expected)//2:], database_name, table_name, compress=compress)
+                df = read_database(database_name, table_name, compress=compress)
+                self.check_dataframe_equality(expected, df)
 
     def test_read_write_simple_database(self):
         self.check_read_write_database(self.get_df(model_csv))
