@@ -26,7 +26,7 @@ mkdir -p data
 
 for f in new_data/* ; do
     echo "Processing file $f"
-    cashew $f result.csv data.db dgemm
+    cashew $f result.csv data.db --compress zlib --compression_level 9 --format table
     mv $f data
 done
 rmdir new_data
