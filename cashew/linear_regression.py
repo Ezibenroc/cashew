@@ -39,7 +39,9 @@ def compute_reg(df, y_var, x_vars, aggregate=False):
     intercept = max(0, compute_intercept(df, 'mnk', y_var))
     df[y_var] -= intercept
     reg = ols(formula=model, data=df).fit()
-    return {'intercept': intercept, **{var: reg.params[var] for var in x_vars}}
+    result = {'intercept': intercept, **{var: reg.params[var] for var in x_vars}}
+    result.update({('tvalue_%s' % var): reg.tvalues[var] for var in x_vars})
+    return result
 
 
 def predict(df, reg, variables):
