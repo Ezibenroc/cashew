@@ -58,6 +58,7 @@ if __name__ == '__main__':
               'tables',
               'numpy',
               'statsmodels',
+              'peanut@git+https://github.com/Ezibenroc/peanut.git',
           ],
           url='https://github.com/Ezibenroc/cashew',
           license='MIT',

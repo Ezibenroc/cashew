@@ -9,6 +9,7 @@ pyyaml = "*"
 tables = "*"
 numpy = "*"
 statsmodels = "*"
+peanut = {git = "https://github.com/Ezibenroc/peanut.git"}
 
 [dev-packages]
 ipython = "*"
