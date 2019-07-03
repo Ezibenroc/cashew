@@ -1,6 +1,6 @@
 import unittest
 import tempfile
-from random import random, randint
+from random import random, randint, shuffle
 import os
 import pandas
 from numpy import dtype
@@ -41,10 +41,19 @@ class BasicTest(unittest.TestCase):
         self.check_dataframe_equality(expected, df)
 
     def check_read_write_database(self, expected):
+        # Writing in one operation
         with tempfile.TemporaryDirectory() as tmpdir:
             database_name = os.path.join(tmpdir, 'database.db')
             table_name = 'my_table'
             write_database(expected, database_name, table_name)
+            df = read_database(database_name, table_name)
+            self.check_dataframe_equality(expected, df)
+        # Writing in two operations
+        with tempfile.TemporaryDirectory() as tmpdir:
+            database_name = os.path.join(tmpdir, 'database.db')
+            table_name = 'my_table'
+            write_database(expected.iloc[:len(expected)//2], database_name, table_name)
+            write_database(expected.iloc[len(expected)//2:], database_name, table_name)
             df = read_database(database_name, table_name)
             self.check_dataframe_equality(expected, df)
 
@@ -66,8 +75,9 @@ class BasicTest(unittest.TestCase):
                                     node=node, core=core, cluster=cluster, cpu=cpu,
                                     jobid=jobid,
                                 ))
+        shuffle(rows)
         result = pandas.DataFrame(rows)
-        assert len(result) > 30
+        assert len(result) > 200
         return result
 
     def test_read_write_complex_database(self):
