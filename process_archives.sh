@@ -12,7 +12,7 @@ rm -f processed_branches
 for branch in $(git branch -r | grep exp_) ; do
     commit=$(git show --format="%H" $branch | head -n 1)
     echo "Processing branch $branch (commit $commit)"
-    echo $branch >> processed_branches
+    echo $branch | cut -d/ -f2 >> processed_branches
     git cherry-pick $commit
     no_archive=false
 done
