@@ -42,8 +42,8 @@ class BasicTest(unittest.TestCase):
 
     def check_read_write_database(self, expected):
         # Writing in one operation
-        for compress in [True, False]:
-            for how in ['sql', 'csv']:
+        for compress in [False]:
+            for how in ['sql', 'csv', 'nested_csv']:
                 with tempfile.TemporaryDirectory() as tmpdir:
                     database_name = os.path.join(tmpdir, 'database.db')
                     table_name = 'my_table'

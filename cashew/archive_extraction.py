@@ -66,8 +66,44 @@ def read_csv(database_name, table_name):
     return pandas.read_csv(database_name)
 
 
+NESTED_COLUMNS = [
+        'function',
+        'cluster',
+        'node',
+        'core',
+        'jobid'
+]
+
+
+def write_nested_csv(df, database_name, table_name, columns=NESTED_COLUMNS):
+    if len(columns) > 0:
+        col = columns[0]
+        for val in sorted(df[col].unique()):
+            directory = os.path.join(database_name, str(val))
+            try:
+                os.makedirs(directory)
+            except FileExistsError:
+                pass
+            tmp = df[df[col] == val].drop(col, axis=1)
+            write_nested_csv(tmp, directory, table_name, columns[1:])
+    else:
+        write_csv(df, os.path.join(database_name, 'data.db'), table_name)
+
+
+def read_nested_csv(database_name, table_name, columns=NESTED_COLUMNS):
+    if len(columns) > 0:
+        all_df = []
+        for col in os.listdir(database_name):
+            df = read_nested_csv(os.path.join(database_name, col), table_name, columns[1:])
+            df[columns[0]] = col
+            all_df.append(df)
+        return pandas.concat(all_df)
+    else:
+        return read_csv(os.path.join(database_name, 'data.db'), table_name)
+
+
 def write_database(df, database_name, table_name, compress=False, how='sql'):
-    func = {'sql': write_sql, 'csv': write_csv}[how]
+    func = {'sql': write_sql, 'csv': write_csv, 'nested_csv': write_nested_csv}[how]
     name_in_archive = 'DATABASE'
     if compress and os.path.isfile(database_name):  # first, we need to decompress the old version
         content = zipfile.ZipFile(database_name).read(name_in_archive)
@@ -82,7 +118,7 @@ def write_database(df, database_name, table_name, compress=False, how='sql'):
 
 
 def read_database(database_name, table_name, compress=False, how='sql'):
-    func = {'sql': read_sql, 'csv': read_csv}[how]
+    func = {'sql': read_sql, 'csv': read_csv, 'nested_csv': read_nested_csv}[how]
     name_in_archive = 'DATABASE'
     if compress and os.path.isfile(database_name):  # first, we need to decompress the old version
         content = zipfile.ZipFile(database_name).read(name_in_archive)
