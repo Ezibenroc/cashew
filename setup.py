@@ -56,6 +56,8 @@ if __name__ == '__main__':
               'pandas',
               'pyyaml',
               'tables',
+              'numpy',
+              'statsmodels',
           ],
           url='https://github.com/Ezibenroc/cashew',
           license='MIT',
