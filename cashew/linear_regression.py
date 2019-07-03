@@ -79,6 +79,9 @@ def regression(df, y_var, x_vars):
                 reg['cpu'] = cpu
                 reg['jobid'] = jobid
                 reg['start_time'] = get_unique(tmp, 'start_time')
+                total_flop = (2 * tmp['m'] * tmp['n'] * tmp['k']).sum()
+                total_time = tmp['duration'].sum()
+                reg['avg_gflops'] = total_flop / total_time * 1e-9
                 reg_local.append(reg)
     return reg_local
 
