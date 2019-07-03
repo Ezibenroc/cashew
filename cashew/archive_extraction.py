@@ -8,7 +8,7 @@ import shutil
 import sqlite3
 
 
-def read_csv(archive_name, csv_name, columns=None):
+def read_archive_csv(archive_name, csv_name, columns=None):
     archive = zipfile.ZipFile(archive_name)
     df = pandas.read_csv(io.BytesIO(archive.read(csv_name)), names=columns)
     df.columns = df.columns.str.strip()
@@ -21,7 +21,7 @@ def read_yaml(archive_name, yaml_name):
 
 
 def read_archive(archive_name, csv_name, columns=None):
-    df = read_csv(archive_name, csv_name, columns)
+    df = read_archive_csv(archive_name, csv_name, columns)
     info = read_yaml(archive_name, 'info.yaml')
     nodes = [key for key in info if key.endswith('grid5000.fr')]
     assert len(nodes) == 1
@@ -50,8 +50,24 @@ def read_sql(database_name, table_name):
     return pandas.read_sql('select * from %s' % table_name, connection)
 
 
+def write_csv(df, database_name, table_name):
+    if os.path.isfile(database_name):
+        with open(database_name) as f:
+            header = f.readline()
+        header = [h.strip() for h in header.split(',')]
+        with open(database_name, 'a') as db_file:
+            df = df[header]  # eventual reordering of the columns, to match the already existing CSV
+            df.to_csv(db_file, index=False, header=False)
+    else:
+        df.to_csv(database_name, index=False)
+
+
+def read_csv(database_name, table_name):
+    return pandas.read_csv(database_name)
+
+
 def write_database(df, database_name, table_name, compress=False, how='sql'):
-    func = {'sql': write_sql}[how]
+    func = {'sql': write_sql, 'csv': write_csv}[how]
     name_in_archive = 'DATABASE'
     if compress and os.path.isfile(database_name):  # first, we need to decompress the old version
         content = zipfile.ZipFile(database_name).read(name_in_archive)
@@ -66,7 +82,7 @@ def write_database(df, database_name, table_name, compress=False, how='sql'):
 
 
 def read_database(database_name, table_name, compress=False, how='sql'):
-    func = {'sql': read_sql}[how]
+    func = {'sql': read_sql, 'csv': read_csv}[how]
     name_in_archive = 'DATABASE'
     if compress and os.path.isfile(database_name):  # first, we need to decompress the old version
         content = zipfile.ZipFile(database_name).read(name_in_archive)

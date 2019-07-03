@@ -17,7 +17,7 @@ def main():
     args = parser.parse_args()
     start = time.time()
     df = read_archive(args.archive_name, args.csv_name)
-    write_database(df, args.database_name, args.table_name)
+    write_database(df, args.database_name, args.table_name, how='sql', compress=False)
     stop = time.time()
     print('Processed archive %s containing %d rows in %.02f seconds' % (args.archive_name, len(df), stop-start))
 
