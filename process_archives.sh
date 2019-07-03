@@ -7,18 +7,19 @@ git checkout master
 git fetch
 git reset --hard origin/master
 
-no_archive=true
 rm -f processed_branches
 for branch in $(git branch -r | grep exp_) ; do
     commit=$(git show --format="%H" $branch | head -n 1)
     echo "Processing branch $branch (commit $commit)"
     echo $branch | cut -d/ -f2 >> processed_branches
     git cherry-pick $commit
-    no_archive=false
 done
 
-if $no_archive ; then
+nb_archives=$(mkdir -p new_data && ls new_data | wc -l)
+
+if [ $nb_archives -eq 0 ] ; then
     echo "No new archive, aborting."
+    rmdir new_data
     exit 0
 fi
 
