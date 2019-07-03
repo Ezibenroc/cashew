@@ -1,7 +1,6 @@
 import io
 import zipfile
 import pandas
-import datetime
 import yaml
 
 
@@ -28,9 +27,9 @@ def read_archive(archive_name, csv_name, columns=None):
     df['node'] = node
     df['cluster'] = info['cluster']
     df['jobid'] = info['jobid']
-    df['cpu'] = 2*df['node'] + df['core'] % 2 - 2
+    df['cpu'] = df['core'] % 2
     oarstat = read_yaml(archive_name, 'oarstat.yaml')
-    df['start_date'] = str(datetime.datetime.fromtimestamp(oarstat['startTime']).date())
+    df['start_time'] = oarstat['startTime']
     df['index'] = -1
     for core in df['core'].unique():
         df.loc[df['core'] == core, 'index'] = range(len(df[df['core'] == core]))

@@ -55,6 +55,7 @@ if __name__ == '__main__':
           install_requires=[
               'pandas',
               'pyyaml',
+              'tables',
           ],
           url='https://github.com/Ezibenroc/cashew',
           license='MIT',
