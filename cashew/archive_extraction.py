@@ -41,3 +41,8 @@ def read_archive(archive_name, csv_name, columns=None):
 def write_database(df, database_name, table_name):
     connection = sqlite3.connect(database_name)
     df.to_sql(table_name, connection, index=False, if_exists='append')
+
+
+def read_database(database_name, table_name):
+    connection = sqlite3.connect(database_name)
+    return pandas.read_sql('select * from %s' % table_name, connection)
