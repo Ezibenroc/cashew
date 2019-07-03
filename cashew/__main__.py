@@ -2,7 +2,7 @@ from datetime import datetime
 import argparse
 import time
 from .archive_extraction import read_archive, write_database
-from .linear_regression import read_and_stat, write_regression
+from .linear_regression import update_regression
 from .version import __version__, __git_version__
 
 
@@ -37,35 +37,12 @@ def main_extract(args):
     print('Processed archive %s containing %d rows in %.02f seconds' % (args.archive_name, len(df), stop-start))
 
 
-def valid_date(s):
-    '''
-    Inspired from https://stackoverflow.com/a/25470943/4110059
-    '''
-    try:
-        return datetime.strptime(s, "%Y-%m-%d")
-    except ValueError:
-        try:
-            return datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            msg = "Not a valid date: '{0}'.".format(s)
-            raise argparse.ArgumentTypeError(msg)
-
-
 def main_stats(args):
     parser = argparse.ArgumentParser(description='Statistics computation.')
     parser.add_argument('database_name', type=str, help='Database where are stored all the raw results (input)')
     parser.add_argument('output_name', type=str, help='Output file to store the statistics')
-    parser.add_argument('--min_date', type=valid_date, default=datetime(1970, 1, 1),
-                        help='Date from which we should compute statistics')
     args = parser.parse_args(args)
-    epoch = int(args.min_date.timestamp())
-    start = time.time()
-    nb_rows, reg_df = read_and_stat(args.database_name, epoch)
-    if nb_rows == 0:
-        parser.error('Database %s does not contain any row after date %s' % (args.database_name, args.min_date))
-    write_regression(args.output_name, reg_df)
-    stop = time.time()
-    print('Processed %d rows of database %s in %.02f seconds' % (nb_rows, args.database_name, stop-start))
+    update_regression(args.database_name, args.output_name)
 
 
 def main():

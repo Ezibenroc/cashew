@@ -2,6 +2,8 @@ import numpy
 import pandas
 import itertools
 import os
+import time
+import datetime
 from statsmodels.formula.api import ols
 
 
@@ -102,22 +104,34 @@ class WriteError(Exception):
     pass
 
 
-def write_regression(filename, reg_df):
-    if os.path.isfile(filename):
-        old_df = pandas.read_csv(filename)
-        diff = set(old_df.columns) ^ set(reg_df.columns)
+def update_regression(hdf_file, output_file, overlap_time=3600*24):
+    start = time.time()
+    identifier = ['cluster', 'node', 'jobid', 'cpu']
+    if os.path.isfile(output_file):
+        old_reg = pandas.read_csv(output_file)
+        max_start = old_reg['start_time'].max()
+        min_epoch = max_start - overlap_time
+        print('File %s has statistics until %s' % (output_file, datetime.datetime.fromtimestamp(max_start)))
+    else:
+        old_reg = None
+        min_epoch = 0
+    print('Computing statistics from file %s since %s' % (hdf_file, datetime.datetime.fromtimestamp(min_epoch)))
+    nb_rows, new_reg = read_and_stat(hdf_file, min_epoch)
+    if nb_rows == 0:
+        print('No new data, aborting')
+        return
+    if old_reg is not None:
+        diff = set(old_reg.columns) ^ set(new_reg.columns)
         if len(diff) > 0:
             raise WriteError('Incompatible columns, the following are in one dataframe but not the other: %s' % diff)
-        identifier = ['cluster', 'jobid']
-        old_jobs = old_df[identifier].drop_duplicates()
-        new_jobs = reg_df[identifier].drop_duplicates()
-        intersection = old_jobs.set_index(identifier).join(new_jobs.set_index(identifier), how='inner').reset_index()
-        if len(intersection) > 0:
-            raise WriteError('Statistics for the following jobs have already been computed:\n%s' % intersection)
-        reg_df = reg_df[old_df.columns]  # Making sure that the columns are in the same order
-        reg_df = pandas.concat([old_df, reg_df])
+        new_reg = new_reg[old_reg.columns]
+        new_reg = pandas.concat([old_reg, new_reg])
+        new_reg.drop_duplicates(subset=identifier, keep='first', inplace=True)
     else:
         id_cols = ['function', 'cluster', 'node', 'cpu', 'jobid', 'start_time']
-        val_cols = list(sorted(set(reg_df.columns) - set(id_cols)))
-        reg_df = reg_df[id_cols + val_cols]
-    reg_df.to_csv(filename, index=False)
+        val_cols = list(sorted(set(new_reg.columns) - set(id_cols)))
+        new_reg = new_reg[id_cols + val_cols]
+    new_reg.sort_values(by=['start_time'] + identifier, axis=0, inplace=True)
+    new_reg.to_csv(output_file, index=False, float_format='%.9e')
+    stop = time.time()
+    print('Processed %d rows of database %s in %.02f seconds' % (nb_rows, hdf_file, stop-start))
