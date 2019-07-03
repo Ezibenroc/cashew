@@ -30,7 +30,7 @@ def main():
         db_args['complevel'] = args.compression_lvl
     db_args['format'] = args.format
     if args.format == 'table':
-        db_args['data_columns'] = ['function', 'cluster', 'node', 'jobid']
+        db_args['data_columns'] = ['function', 'cluster', 'node', 'jobid', 'start_time']
         db_args['append'] = True
     start = time.time()
     df = read_archive(args.archive_name, args.csv_name)
