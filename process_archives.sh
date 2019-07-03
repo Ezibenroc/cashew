@@ -4,7 +4,8 @@ git config user.email "CI@$(hostname)"
 git config user.name "gitlab-CI"
 
 git checkout master
-git pull
+git fetch
+git reset --hard origin/master
 
 no_archive=true
 for branch in $(git branch -r | grep exp_) ; do
