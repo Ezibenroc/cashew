@@ -1,5 +1,7 @@
 #! /usr/bin/env bash
 
+echoerr() { echo "$@" 1>&2; }
+
 git config user.email "CI@$(hostname)"
 git config user.name "gitlab-CI"
 
@@ -10,7 +12,7 @@ git reset --hard origin/master
 rm -f processed_branches
 for branch in $(git branch -r | grep exp_) ; do
     commit=$(git show --format="%H" $branch | head -n 1)
-    echo "Processing branch $branch (commit $commit)"
+    echoerr "Processing branch $branch (commit $commit)"
     echo $branch | cut -d/ -f2 >> processed_branches
     git cherry-pick $commit
 done
@@ -26,7 +28,7 @@ fi
 mkdir -p data
 
 for f in new_data/* ; do
-    echo "Processing file $f"
+    echoerr "Processing file $f"
     cashew extract $f result.csv data.db --compression zlib --compression_lvl 9 --format table
     mv $f data
 done
