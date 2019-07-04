@@ -6,7 +6,7 @@ git config user.email "CI@$(hostname)"
 git config user.name "gitlab-CI"
 
 git checkout master
-git fetch
+git fetch --prune
 git reset --hard origin/master
 
 rm -f processed_branches
