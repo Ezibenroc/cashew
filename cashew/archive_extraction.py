@@ -3,6 +3,7 @@ import zipfile
 import pandas
 import yaml
 import lxml.etree
+import os
 from peanut import Nodes
 
 
@@ -66,6 +67,16 @@ def read_archive(archive_name, csv_name, columns=None):
 
 
 def write_database(df, database_name, **kwargs):
+    if os.path.exists(database_name):
+        def get_unique(df, key):
+            val = df[key].unique()
+            assert len(val) == 1
+            return val[0]
+        jobid = get_unique(df, 'jobid')
+        cluster = get_unique(df, 'cluster')
+        tmp = pandas.read_hdf(database_name, 'DATABASE', where=['jobid=%d' % jobid, 'cluster=%s' % cluster])
+        if len(tmp) > 0:
+            raise ValueError('Job %d from cluster %s already exists in database %s' % (jobid, cluster, database_name))
     df.to_hdf(database_name, 'DATABASE', **kwargs)
 
 

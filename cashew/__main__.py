@@ -1,5 +1,6 @@
 import argparse
 import time
+import sys
 from .archive_extraction import read_archive, write_database
 from .linear_regression import update_regression
 from .version import __version__, __git_version__
@@ -57,7 +58,11 @@ def main():
         'extract': main_extract,
         'stats': main_stats,
     }
-    main_funcs[args.command](command_args)
+    try:
+        main_funcs[args.command](command_args)
+    except Exception as e:
+        logger.error(e)
+        sys.exit(1)
 
 
 if __name__ == '__main__':
