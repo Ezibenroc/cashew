@@ -77,7 +77,7 @@ def write_database(df, database_name, **kwargs):
         tmp = pandas.read_hdf(database_name, 'DATABASE', where=['jobid=%d' % jobid, 'cluster=%s' % cluster])
         if len(tmp) > 0:
             raise ValueError('Job %d from cluster %s already exists in database %s' % (jobid, cluster, database_name))
-    df.to_hdf(database_name, 'DATABASE', **kwargs)
+    df.to_hdf(database_name, 'DATABASE', min_itemsize={'cluster': 20, 'function': 20}, **kwargs)
 
 
 def read_database(database_name):
