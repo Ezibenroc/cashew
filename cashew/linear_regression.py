@@ -110,7 +110,7 @@ class WriteError(Exception):
     pass
 
 
-def update_regression(hdf_file, output_file, overlap_time=3600*24):
+def update_regression(hdf_file, output_file, overlap_time=3600*12):
     start = time.time()
     identifier = ['cluster', 'node', 'jobid', 'cpu']
     if os.path.isfile(output_file):
