@@ -42,8 +42,10 @@ def main_stats(args):
     parser = argparse.ArgumentParser(description='Statistics computation.')
     parser.add_argument('database_name', type=str, help='Database where are stored all the raw results (input)')
     parser.add_argument('output_name', type=str, help='Output file to store the statistics')
+    parser.add_argument('--conditions', type=str, nargs='*', help='HDF conditions to filter the database.',
+                        default=[])
     args = parser.parse_args(args)
-    update_regression(args.database_name, args.output_name)
+    update_regression(args.database_name, args.output_name, conditions=args.conditions)
 
 
 def main():

@@ -98,8 +98,8 @@ def compute_variable_products(df, variables):
                 df[name] *= df[var]
 
 
-def read_and_stat(hdf_file, min_epoch):
-    df = pandas.read_hdf(hdf_file, where=['start_time >= %d' % min_epoch])
+def read_and_stat(hdf_file, min_epoch, max_epoch=None, conditions=[]):
+    df = pandas.read_hdf(hdf_file, where=['start_time >= %d' % min_epoch]+conditions)
     size = len(df)
     if size == 0:
         return size, None
@@ -111,7 +111,7 @@ class WriteError(Exception):
     pass
 
 
-def update_regression(hdf_file, output_file, overlap_time=3600*12):
+def update_regression(hdf_file, output_file, overlap_time=3600*12, conditions=[]):
     start = time.time()
     identifier = ['cluster', 'node', 'jobid', 'cpu']
     if os.path.isfile(output_file):
@@ -123,7 +123,7 @@ def update_regression(hdf_file, output_file, overlap_time=3600*12):
         old_reg = None
         min_epoch = 0
     logger.info('Computing statistics from file %s since %s' % (hdf_file, datetime.datetime.fromtimestamp(min_epoch)))
-    nb_rows, new_reg = read_and_stat(hdf_file, min_epoch)
+    nb_rows, new_reg = read_and_stat(hdf_file, min_epoch, conditions=conditions)
     if nb_rows == 0:
         logger.info('No new data, aborting')
         return
