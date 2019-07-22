@@ -63,6 +63,12 @@ def read_archive(archive_name, csv_name, columns=None):
     df['index'] = -1
     for core in df['core'].unique():
         df.loc[df['core'] == core, 'index'] = range(len(df[df['core'] == core]))
+    expfile = info['expfile']
+    assert len(expfile) == 1
+    expfile = read_archive_csv(archive_name, expfile[0])
+    # The following hash will be identical if rows are reordered, this is on purpose.
+    expfile_hash = abs(pandas.util.hash_pandas_object(expfile).sum())
+    df['expfile_hash'] = expfile_hash
     return df
 
 

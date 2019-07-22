@@ -78,6 +78,7 @@ def regression(df, y_var, x_vars):
                 reg['cluster'] = get_unique(tmp, 'cluster')
                 reg['function'] = get_unique(tmp, 'function')
                 reg['node'] = get_unique(tmp, 'node')
+                reg['expfile_hash'] = get_unique(tmp, 'expfile_hash')
                 reg['cpu'] = cpu
                 reg['jobid'] = jobid
                 reg['start_time'] = get_unique(tmp, 'start_time')
@@ -134,7 +135,7 @@ def update_regression(hdf_file, output_file, overlap_time=3600*12):
         new_reg = pandas.concat([old_reg, new_reg])
         new_reg.drop_duplicates(subset=identifier, keep='first', inplace=True)
     else:
-        id_cols = ['function', 'cluster', 'node', 'cpu', 'jobid', 'start_time']
+        id_cols = ['function', 'cluster', 'node', 'cpu', 'jobid', 'start_time', 'expfile_hash']
         val_cols = list(sorted(set(new_reg.columns) - set(id_cols)))
         new_reg = new_reg[id_cols + val_cols]
     new_reg.sort_values(by=['start_time'] + identifier, axis=0, inplace=True)
