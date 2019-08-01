@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "cashew"
+version = "0.0.0"
+description = "Utility functions to work with archives produced by the peanut engine"
+authors = ["Tom Cornebize <tom.cornebize@univ-grenoble-alpes.fr>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = ">= 3.5.3"
+pandas = "^0.25.0"
+pyyaml = "^5.1"
+tables = "^3.5"
+numpy = "^1.17"
+statsmodels = "^0.10.1"
+peanut = { git = "https://github.com/Ezibenroc/peanut.git", rev="45eae5c006cc6f07632903f1ea40385739a69c63" }
+
+[tool.poetry.dev-dependencies]
+ipython = "^7.7"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
