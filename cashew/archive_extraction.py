@@ -71,7 +71,7 @@ def read_archive(archive_name, csv_name, columns=None):
     expfile.sort()
     expfile = b'\n'.join(expfile)
     df['expfile_hash'] = hashlib.sha256(expfile).hexdigest()
-    return df
+    return df.drop(['lda', 'ldb', 'ldc'], axis=1)
 
 
 def write_database(df, database_name, **kwargs):
