@@ -33,7 +33,7 @@ def get_platform(archive_name, filename='topology.xml'):
 def platform_to_cpu_mapping(platform):
     cpus = {}
     mapping = {}
-    keys = list(set(platform[0].keys()) - {'PU', 'Core'})
+    keys = list(set(platform[0].keys()) - {'NUMANode', 'PU', 'Core'})
     CPU_id = 0
     for PU, info in sorted(platform.items()):
         identifier = tuple(info[k] for k in keys)
