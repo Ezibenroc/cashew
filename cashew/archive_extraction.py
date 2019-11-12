@@ -51,8 +51,16 @@ def read_archive(archive_name, csv_name, columns=None):
     info = read_yaml(archive_name, 'info.yaml')
     site = info['site']
     cluster = info['cluster']
+    try:  # retro-compatibility...
+        df['hostname']
+    except KeyError:
+        nodes = [key for key in info if key.endswith('grid5000.fr')]
+        assert len(nodes) == 1
+        df['node'] = nodes[0]
+    else:
+        df['node'] = df['hostname']
     # changing 'dahu-42.grenoble.grid5000.fr' into '42'
-    df['node'] = df['hostname'].str[len(cluster)+1:-(len(site)+len('..grid5000.fr'))]
+    df['node'] = df['node'].str[len(cluster)+1:-(len(site)+len('..grid5000.fr'))]
     df['cluster'] = cluster
     df['jobid'] = info['jobid']
     core_mapping = platform_to_cpu_mapping(get_platform(archive_name))
@@ -69,7 +77,9 @@ def read_archive(archive_name, csv_name, columns=None):
     expfile.sort()
     expfile = b'\n'.join(expfile)
     df['expfile_hash'] = hashlib.sha256(expfile).hexdigest()
-    return df.drop(['lda', 'ldb', 'ldc', 'hostname'], axis=1)
+    columns = ['function', 'm', 'n', 'k', 'timestamp', 'duration', 'core', 'node',
+       'cluster', 'jobid', 'cpu', 'start_time', 'index', 'expfile_hash']
+    return df[columns]
 
 
 def write_database(df, database_name, **kwargs):
