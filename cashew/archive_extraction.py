@@ -49,13 +49,11 @@ def platform_to_cpu_mapping(platform):
 def read_archive(archive_name, csv_name, columns=None):
     df = read_archive_csv(archive_name, csv_name, columns)
     info = read_yaml(archive_name, 'info.yaml')
-    nodes = [key for key in info if key.endswith('grid5000.fr')]
-    assert len(nodes) == 1
-    node = nodes[0]
-    node = node[:node.index('.')]
-    node = int(node[node.index('-')+1:])
-    df['node'] = node
-    df['cluster'] = info['cluster']
+    site = info['site']
+    cluster = info['cluster']
+    # changing 'dahu-42.grenoble.grid5000.fr' into '42'
+    df['node'] = df['hostname'].str[len(cluster)+1:-(len(site)+len('..grid5000.fr'))]
+    df['cluster'] = cluster
     df['jobid'] = info['jobid']
     core_mapping = platform_to_cpu_mapping(get_platform(archive_name))
     df['cpu'] = df.apply(lambda row: core_mapping[row.core], axis=1)
@@ -71,7 +69,7 @@ def read_archive(archive_name, csv_name, columns=None):
     expfile.sort()
     expfile = b'\n'.join(expfile)
     df['expfile_hash'] = hashlib.sha256(expfile).hexdigest()
-    return df.drop(['lda', 'ldb', 'ldc'], axis=1)
+    return df.drop(['lda', 'ldb', 'ldc', 'hostname'], axis=1)
 
 
 def write_database(df, database_name, **kwargs):
