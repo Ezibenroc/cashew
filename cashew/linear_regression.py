@@ -70,22 +70,25 @@ def regression(df, y_var, x_vars):
         return val[0]
     reg_local = []
     for cluster in sorted(df['cluster'].unique()):
-        for jobid in sorted(df['jobid'].unique()):
-            tmp_node = df[(df['cluster'] == cluster) & (df['jobid'] == jobid)]
-            for cpu in sorted(tmp_node['cpu'].unique()):
-                tmp = tmp_node[tmp_node['cpu'] == cpu]
-                reg = compute_full_reg(tmp, y_var, x_vars)
-                reg['cluster'] = get_unique(tmp, 'cluster')
-                reg['function'] = get_unique(tmp, 'function')
-                reg['node'] = get_unique(tmp, 'node')
-                reg['expfile_hash'] = get_unique(tmp, 'expfile_hash')
-                reg['cpu'] = cpu
-                reg['jobid'] = jobid
-                reg['start_time'] = get_unique(tmp, 'start_time')
-                total_flop = (2 * tmp['m'] * tmp['n'] * tmp['k']).sum()
-                total_time = tmp['duration'].sum()
-                reg['avg_gflops'] = total_flop / total_time * 1e-9
-                reg_local.append(reg)
+        tmp_cluster = df[df['cluster'] == cluster]
+        for jobid in sorted(tmp_cluster['jobid'].unique()):
+            tmp_job = tmp_cluster[tmp_cluster['jobid'] == jobid]
+            for node in sorted(tmp_job['node'].unique()):
+                tmp_node = tmp_job[tmp_job['node'] == node]
+                for cpu in sorted(tmp_node['cpu'].unique()):
+                    tmp = tmp_node[tmp_node['cpu'] == cpu]
+                    reg = compute_full_reg(tmp, y_var, x_vars)
+                    reg['cluster'] = get_unique(tmp, 'cluster')
+                    reg['function'] = get_unique(tmp, 'function')
+                    reg['node'] = get_unique(tmp, 'node')
+                    reg['expfile_hash'] = get_unique(tmp, 'expfile_hash')
+                    reg['cpu'] = cpu
+                    reg['jobid'] = jobid
+                    reg['start_time'] = get_unique(tmp, 'start_time')
+                    total_flop = (2 * tmp['m'] * tmp['n'] * tmp['k']).sum()
+                    total_time = tmp['duration'].sum()
+                    reg['avg_gflops'] = total_flop / total_time * 1e-9
+                    reg_local.append(reg)
     return reg_local
 
 
