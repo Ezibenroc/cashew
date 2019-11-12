@@ -60,7 +60,7 @@ def read_archive(archive_name, csv_name, columns=None):
     else:
         df['node'] = df['hostname']
     # changing 'dahu-42.grenoble.grid5000.fr' into '42'
-    df['node'] = df['node'].str[len(cluster)+1:-(len(site)+len('..grid5000.fr'))]
+    df['node'] = df['node'].str[len(cluster)+1:-(len(site)+len('..grid5000.fr'))].astype(int)
     df['cluster'] = cluster
     df['jobid'] = info['jobid']
     core_mapping = platform_to_cpu_mapping(get_platform(archive_name))
