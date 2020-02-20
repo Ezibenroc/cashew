@@ -53,7 +53,6 @@ def predict(df, reg, variables):
 
 
 def compute_full_reg(df, y_var, x_vars):
-    df = df.copy()
     reg_duration = compute_reg(df, y_var, x_vars, aggregate='mean')
     df['pred'] = predict(df, reg_duration, x_vars)
     df['residual'] = df[y_var] - df['pred']
@@ -62,12 +61,42 @@ def compute_full_reg(df, y_var, x_vars):
         reg_duration['%s_residual' % k] = reg_residual[k]
     return reg_duration
 
+def get_unique(df, key):
+    val = df[key].unique()
+    assert len(val) == 1
+    return val[0]
 
-def regression(df, y_var, x_vars):
-    def get_unique(df, key):
-        val = df[key].unique()
-        assert len(val) == 1
-        return val[0]
+
+def compute_dgemm_reg(df):
+    df = df.copy()
+    compute_variable_products(df, 'mnk')
+    reg = compute_full_reg(df, 'duration', ['mnk', 'mn', 'mk', 'nk'])
+    total_flop = (2 * df['m'] * df['n'] * df['k']).sum()
+    total_time = df['duration'].sum()
+    reg['avg_gflops'] = total_flop / total_time * 1e-9
+    reg['function'] = get_unique(df, 'function')
+    return reg
+
+
+def compute_monitoring_stat(df, time_after_start=300, time_window=60):
+    start = get_unique(df, 'start_exp')
+    stop = get_unique(df, 'stop_exp')
+    if stop - start < time_after_start + 3*time_window:
+        raise ValueError('Experiment was too short, cannot compute monitoring values')
+    tmp = df[(df['timestamp'] > start + time_after_start) &
+              (df['timestamp'] < start + time_after_start + time_window)]
+    freq = tmp[tmp['kind'] == 'frequency']['value']
+    temp = tmp[tmp['kind'] == 'temperature']['value']
+    print(freq.min(), freq.max())
+    return {
+        'mean_frequency': freq.mean(),
+        'std_frequency': freq.std(),
+        'mean_temperature': temp.mean(),
+        'std_temperature': temp.std(),
+    }
+
+
+def regression(df, reg_func):
     reg_local = []
     for cluster in sorted(df['cluster'].unique()):
         tmp_cluster = df[df['cluster'] == cluster]
@@ -77,17 +106,13 @@ def regression(df, y_var, x_vars):
                 tmp_node = tmp_job[tmp_job['node'] == node]
                 for cpu in sorted(tmp_node['cpu'].unique()):
                     tmp = tmp_node[tmp_node['cpu'] == cpu]
-                    reg = compute_full_reg(tmp, y_var, x_vars)
+                    reg = reg_func(tmp)
                     reg['cluster'] = get_unique(tmp, 'cluster')
-                    reg['function'] = get_unique(tmp, 'function')
                     reg['node'] = get_unique(tmp, 'node')
                     reg['expfile_hash'] = get_unique(tmp, 'expfile_hash')
                     reg['cpu'] = cpu
                     reg['jobid'] = jobid
                     reg['start_time'] = get_unique(tmp, 'start_time')
-                    total_flop = (2 * tmp['m'] * tmp['n'] * tmp['k']).sum()
-                    total_time = tmp['duration'].sum()
-                    reg['avg_gflops'] = total_flop / total_time * 1e-9
                     reg_local.append(reg)
     return reg_local
 
@@ -106,8 +131,10 @@ def read_and_stat(hdf_file, min_epoch, max_epoch=None, conditions=[]):
     size = len(df)
     if size == 0:
         return size, None
-    compute_variable_products(df, 'mnk')
-    return size, pandas.DataFrame(regression(df, 'duration', ['mnk', 'mn', 'mk', 'nk']))
+    if 'start_exp' in df.columns:  # monitoring data
+        return size, pandas.DataFrame(regression(df, compute_monitoring_stat))
+    else:  # performance data
+        return size, pandas.DataFrame(regression(df, compute_dgemm_reg))
 
 
 class WriteError(Exception):
@@ -138,7 +165,9 @@ def update_regression(hdf_file, output_file, overlap_time=3600*12, conditions=[]
         new_reg = pandas.concat([old_reg, new_reg])
         new_reg.drop_duplicates(subset=identifier, keep='first', inplace=True)
     else:
-        id_cols = ['function', 'cluster', 'node', 'cpu', 'jobid', 'start_time', 'expfile_hash']
+        id_cols = ['cluster', 'node', 'cpu', 'jobid', 'start_time', 'expfile_hash']
+        if 'function' in new_reg.columns:
+            id_cols.append('function')
         val_cols = list(sorted(set(new_reg.columns) - set(id_cols)))
         new_reg = new_reg[id_cols + val_cols]
     new_reg.sort_values(by=['start_time'] + identifier, axis=0, inplace=True)
