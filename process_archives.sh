@@ -29,7 +29,7 @@ mkdir -p data
 
 for f in new_data/* ; do
     echoerr "Processing file $f"
-    cashew extract $f result.csv data.db --compression zlib --compression_lvl 9 --format table
+    cashew extract $f performance data.db --compression zlib --compression_lvl 9 --format table
     mv $f data
 done
 rmdir new_data

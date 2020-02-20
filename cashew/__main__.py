@@ -1,7 +1,7 @@
 import argparse
 import time
 import sys
-from .archive_extraction import read_archive, write_database
+from .archive_extraction import read_performance, read_monitoring, write_database
 from .linear_regression import update_regression
 from .version import __version__, __git_version__
 from .logger import logger
@@ -10,7 +10,8 @@ from .logger import logger
 def main_extract(args):
     parser = argparse.ArgumentParser(description='Archive extraction.')
     parser.add_argument('archive_name', type=str, help='Peanut archive file (input)')
-    parser.add_argument('csv_name', type=str, help='Name of the CSV file of interest in the archive')
+    parser.add_argument('information', choices=['performance', 'monitoring'],
+                        help='Which information to extract from the archive')
     parser.add_argument('database_name', type=str, help='Database where should be stored all the results (output)')
     parser.add_argument('--compression', type=str, choices=['none', 'zlib', 'bzip2', 'lzo',  'blosc'],
                         help='Compression mode for the database', default='blosc')
@@ -32,7 +33,12 @@ def main_extract(args):
         db_args['data_columns'] = ['function', 'cluster', 'node', 'jobid', 'start_time']
         db_args['append'] = True
     start = time.time()
-    df = read_archive(args.archive_name, args.csv_name)
+    if args.information == 'performance':
+        df = read_performance(args.archive_name)
+    elif args.information == 'monitoring':
+        df = read_monitoring(args.archive_name)
+    else:
+        assert False
     write_database(df, args.database_name, **db_args)
     stop = time.time()
     logger.info('Processed archive %s containing %d rows in %.02f seconds' % (args.archive_name, len(df), stop-start))

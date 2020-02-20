@@ -1,11 +1,17 @@
 import io
 import zipfile
 import pandas
+import numpy
 import yaml
 import lxml.etree
 import os
 import hashlib
 from peanut import Nodes
+
+modes = {
+    'performance': 'result.csv',
+    'monitoring': 'monitoring.csv',
+}
 
 
 def read_archive_csv(archive_name, csv_name, columns=None):
@@ -46,7 +52,7 @@ def platform_to_cpu_mapping(platform):
     return mapping
 
 
-def read_archive(archive_name, csv_name, columns=None):
+def read_archive_csv_enhanced(archive_name, csv_name, columns=None):
     df = read_archive_csv(archive_name, csv_name, columns)
     info = read_yaml(archive_name, 'info.yaml')
     site = info['site']
@@ -63,13 +69,8 @@ def read_archive(archive_name, csv_name, columns=None):
     df['node'] = df['node'].str[len(cluster)+1:-(len(site)+len('..grid5000.fr'))].astype(int)
     df['cluster'] = cluster
     df['jobid'] = info['jobid']
-    core_mapping = platform_to_cpu_mapping(get_platform(archive_name))
-    df['cpu'] = df.apply(lambda row: core_mapping[row.core], axis=1)
     oarstat = read_yaml(archive_name, 'oarstat.yaml')
     df['start_time'] = oarstat['startTime']
-    df['index'] = -1
-    for core in df['core'].unique():
-        df.loc[df['core'] == core, 'index'] = range(len(df[df['core'] == core]))
     expfile = info['expfile']
     assert len(expfile) == 1
     expfile = zipfile.ZipFile(archive_name).read(expfile[0])
@@ -77,9 +78,64 @@ def read_archive(archive_name, csv_name, columns=None):
     expfile.sort()
     expfile = b'\n'.join(expfile)
     df['expfile_hash'] = hashlib.sha256(expfile).hexdigest()
+    return df
+
+
+def read_performance(archive_name, columns=None):
+    '''
+    Read the durations of a BLAS calibration in an archive.
+    '''
+    csv_name = 'result.csv'
+    df = read_archive_csv_enhanced(archive_name, csv_name, columns=columns)
+    core_mapping = platform_to_cpu_mapping(get_platform(archive_name))
+    df['cpu'] = df.apply(lambda row: core_mapping[row.core], axis=1)
+    df['index'] = -1
+    for core in df['core'].unique():
+        df.loc[df['core'] == core, 'index'] = range(len(df[df['core'] == core]))
     columns = ['function', 'm', 'n', 'k', 'timestamp', 'duration', 'core', 'node',
        'cluster', 'jobid', 'cpu', 'start_time', 'index', 'expfile_hash']
     return df[columns]
+
+
+def my_melt(df, prefix, idcol):
+    result = []
+    columns = [col for col in df.columns if col.startswith(prefix)]
+    for col in columns:
+        tmp = df[idcol].copy()
+        tmp[prefix] = df[col]
+        tmp['group'] = int(col[len(prefix):])
+        result.append(tmp)
+    return pandas.concat(result)
+
+
+def read_monitoring(archive_name, columns=None):
+    '''
+    Read the durations of a BLAS calibration in an archive.
+    '''
+    csv_name = 'monitoring.csv'
+    df = read_archive_csv_enhanced(archive_name, csv_name, columns=columns)
+    df['timestamp'] = pandas.to_datetime(df['timestamp'])
+    core_mapping = platform_to_cpu_mapping(get_platform(archive_name))
+    columns = ['timestamp', 'cluster', 'node', 'jobid', 'start_time', 'expfile_hash']
+    temperature = my_melt(df, 'temperature_core_', columns)
+    frequency   = my_melt(df, 'frequency_core_', columns)
+    # removing the cores with largest IDs (they are not real cores, just hyperthreads)
+    frequency = frequency[frequency['group'] <= max(core_mapping.keys())]
+    for frame, val in [(temperature, 'temperature'), (frequency, 'frequency')]:
+        frame['value'] = frame[f'{val}_core_']
+        frame.drop(f'{val}_core_', axis=1, inplace=True)
+        frame['cpu'] = frame.apply(lambda row: core_mapping[row.group], axis=1)
+        frame['core'] = frame['group']
+        frame.drop('group', axis=1, inplace=True)
+        frame['kind'] = val
+    frequency['value'] *= 1e-9  # Hz → GHz
+    df = pandas.concat([frequency, temperature])
+    info = read_yaml(archive_name, 'info.yaml')
+    timestamps = info['timestamp']
+    for step in ['start', 'stop']:
+        df[f'{step}_exp'] = pandas.to_datetime(timestamps['run_exp'][step]).timestamp()
+    df['timestamp'] = df['timestamp'].astype(numpy.int64) / 10 ** 9
+    return df
 
 
 def write_database(df, database_name, **kwargs):
@@ -93,7 +149,10 @@ def write_database(df, database_name, **kwargs):
         tmp = pandas.read_hdf(database_name, 'DATABASE', where=['jobid=%d' % jobid, 'cluster=%s' % cluster])
         if len(tmp) > 0:
             raise ValueError('Job %d from cluster %s already exists in database %s' % (jobid, cluster, database_name))
-    df.to_hdf(database_name, 'DATABASE', min_itemsize={'cluster': 20, 'function': 20}, **kwargs)
+    min_size = {'cluster': 20}
+    if 'function' in df.columns:
+        min_size['function'] = 20
+    df.to_hdf(database_name, 'DATABASE', min_itemsize=min_size, **kwargs)
 
 
 def read_database(database_name):
