@@ -87,7 +87,6 @@ def compute_monitoring_stat(df, time_after_start=300, time_window=60):
               (df['timestamp'] < start + time_after_start + time_window)]
     freq = tmp[tmp['kind'] == 'frequency']['value']
     temp = tmp[tmp['kind'] == 'temperature']['value']
-    print(freq.min(), freq.max())
     return {
         'mean_frequency': freq.mean(),
         'std_frequency': freq.std(),
