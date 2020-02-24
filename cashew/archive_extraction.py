@@ -121,6 +121,7 @@ def read_monitoring(archive_name, columns=None):
     frequency   = my_melt(df, 'frequency_core_', columns)
     # removing the cores with largest IDs (they are not real cores, just hyperthreads)
     frequency = frequency[frequency['group'] <= max(core_mapping.keys())]
+    temperature = temperature[temperature['group'] <= max(core_mapping.keys())]
     for frame, val in [(temperature, 'temperature'), (frequency, 'frequency')]:
         frame['value'] = frame[f'{val}_core_']
         frame.drop(f'{val}_core_', axis=1, inplace=True)
