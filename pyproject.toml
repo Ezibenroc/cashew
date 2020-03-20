@@ -13,7 +13,7 @@ tables = "^3.5"
 numpy = "^1.17"
 statsmodels = "^0.10.1"
 peanut = { git = "https://github.com/Ezibenroc/peanut.git", rev="45eae5c006cc6f07632903f1ea40385739a69c63" }
-wheel = "^0.33.6"
+wheel = ">=0.33.6"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.7"
