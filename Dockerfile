@@ -9,5 +9,6 @@ RUN cashew --git-version
 RUN wget https://raw.githubusercontent.com/Ezibenroc/cashew/master/process_archives.sh -O /bin/process_archive
 RUN chmod +x /bin/process_archive
 RUN wget https://raw.githubusercontent.com/Ezibenroc/cashew/master/CI.sh -O /CI.sh
+RUN wget https://raw.githubusercontent.com/Ezibenroc/cashew/master/CI_test.sh -O /CI_test.sh
 
 COPY GITLAB_TOKEN /
