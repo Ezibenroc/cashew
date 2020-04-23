@@ -4,7 +4,7 @@ import sys
 from setuptools import setup
 import subprocess
 
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 
 
 class CommandError(Exception):
@@ -58,6 +58,11 @@ if __name__ == '__main__':
               'tables',
               'numpy',
               'statsmodels',
+              'requests',
+              'plotnine',
+              'jupyterlab',
+              'nbconvert',
+              'papermill',
               'peanut@https://github.com/Ezibenroc/peanut/releases/download/0.0.1/peanut-0.0.1-py3-none-any.whl',
           ],
           url='https://github.com/Ezibenroc/cashew',

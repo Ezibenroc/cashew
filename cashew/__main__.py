@@ -3,6 +3,7 @@ import time
 import sys
 from .archive_extraction import read_performance, read_monitoring, write_database
 from .linear_regression import update_regression
+from .notebook_generation import main as __main_notebook
 from .version import __version__, __git_version__
 from .logger import logger
 
@@ -54,9 +55,35 @@ def main_stats(args):
     update_regression(args.database_name, args.output_name, conditions=args.conditions)
 
 
+def main_notebook(args):
+    possible_clusters = [
+            'dahu',
+            'yeti',
+            'troll',
+            'paravance',
+            'parasilo',
+            'grisou',
+            'gros',
+            'ecotype',
+            'chiclet',
+            'chetemi',
+    ]
+    parser = argparse.ArgumentParser(description='Generation of non-regression notebooks.')
+    parser.add_argument('clusters', help='Name of the clusters to test', nargs='+',
+            choices = possible_clusters + ['all'])
+    parser.add_argument('--output', help='Directory to store the resulting files.',
+                        type=str, default='/tmp')
+    args = parser.parse_args(args)
+    if 'all' in args.clusters:
+        clusters = possible_clusters
+    else:
+        clusters = args.clusters
+    __main_notebook(args.output, clusters)
+
+
 def main():
     parser = argparse.ArgumentParser(description='Cashew, the peanut extractor')
-    parser.add_argument('command', choices=['extract', 'stats'], help='Operation to perform.')
+    parser.add_argument('command', choices=['extract', 'stats', 'test'], help='Operation to perform.')
     parser.add_argument('--version', action='version',
                         version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument('--git-version', action='version',
@@ -65,6 +92,7 @@ def main():
     main_funcs = {
         'extract': main_extract,
         'stats': main_stats,
+        'test': main_notebook,
     }
     try:
         main_funcs[args.command](command_args)
