@@ -15,6 +15,6 @@ git clone $REPO_URL repository --depth 1
 cd repository
 git remote set-branches origin '*'  # https://stackoverflow.com/a/27393574
 git fetch -v
-process_archive | grep "No new archive" && exit 0
-git push $remote_url
+process_archive || exit 1
+git push $remote_url || exit 1
 for branch in $(cat processed_branches) ; do git push $remote_url --delete $branch ; done
