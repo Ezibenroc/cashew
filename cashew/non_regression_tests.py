@@ -5,7 +5,7 @@ import logging
 from scipy import stats
 import numpy
 import plotnine
-plotnine.options.figure_size = (12, 8)
+plotnine.options.figure_size = (10, 7.5)
 from plotnine import *
 from mizani.breaks import date_breaks
 from mizani.formatters import date_format
@@ -60,7 +60,11 @@ def filter_changelog(df, cluster, node):
         if row['cluster'] == 'all' or cluster in row['cluster'].split('/'):
             if row['node'] == 'all' or str(node) in row['node'].split('/'):
                 result_rows.append(row)
-    return pandas.DataFrame(result_rows)
+    if len(result_rows) > 0:
+        result = pandas.DataFrame(result_rows)
+    else:
+        result = pandas.DataFrame(columns=df.columns)
+    return result
 
 def filter(df, **kwargs):
     '''
