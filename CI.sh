@@ -16,5 +16,12 @@ cd repository
 git remote set-branches origin '*'  # https://stackoverflow.com/a/27393574
 git fetch -v
 process_archive || exit 1
-git lfs push --all $remote_url && git push $remote_url || exit 1
+
+# There is an issue somewhere, maybe with git LFS, maybe with IN2P3's Gitlab, I don't know.
+# If we do only 'git push', then the command fails and tell us to do 'git lfs push --all'.
+# If we do 'git lfs push --all', then the command does not terminate (it seems).
+# But, if start by 'git lfs push --all' in the background and wait a bit, then 'git push' works fine.
+# So, this is what the following does. It is ugly, but I am simply too lazy to fill in a bug report.
+git lfs push --all $remote_url &
+sleep 60 && git push $remote_url || exit 1
 for branch in $(cat processed_branches) ; do git push $remote_url --delete $branch ; done
