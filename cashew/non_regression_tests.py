@@ -192,9 +192,9 @@ def plot_evolution_node(df, col):
     return ggplot(df) +\
             aes(x='timestamp', y=col) +\
             geom_line() +\
-            geom_point(aes(color='weird'), size=0.5) +\
-            geom_point(df[df.weird == True], aes(color='weird'), size=2) +\
-            scale_color_manual({
+            geom_point(aes(fill='weird'), size=1.5, stroke=0) +\
+            geom_point(df[df.weird == True], aes(fill='weird'), size=3, stroke=0) +\
+            scale_fill_manual({
                 'NA': '#AAAAAA',
                 True: '#FF0000',
                 False: '#00FF00'}) +\
@@ -216,9 +216,14 @@ def plot_evolution_cluster(df, col, changelog=None):
                 expand_limits(y=(min_f, max_f))
         if changelog is not None:
             log = filter_changelog(changelog[changelog['date'] >= df['timestamp'].min()], cluster, node)
-            dates = [] if len(log) == 0 else list(log['date'])
-            for date in dates:
-                plot += geom_vline(xintercept=date, linetype='dashed')
+            plot += geom_vline(log, aes(xintercept='date', color='type'), linetype='dashed')
+            plot += scale_color_manual({
+                'protocol': '#888888',
+                'G5K': '#DD9500'},
+                guide=False)
+            log.loc[log['type'] == 'protocol', 'description'] = 'protocol'
+            plot += geom_label(log[log['type'] == 'G5K'], aes(label='description', x='date', color='type'), y=max_f, size=8)
+            plot += geom_label(log[log['type'] != 'G5K'], aes(label='description', x='date', color='type'), y=min_f, size=8)
         print(plot)
 
 
