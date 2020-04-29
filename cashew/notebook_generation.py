@@ -190,6 +190,25 @@ notebook_str = r'''
    "outputs": [],
    "source": [
     "%%time\n",
+    "nrt.plot_overview(marked)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "changelog"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%%time\n",
     "nrt.plot_evolution_cluster(marked, factor, changelog)"
    ]
   }
