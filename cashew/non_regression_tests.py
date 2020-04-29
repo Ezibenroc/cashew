@@ -3,6 +3,7 @@ import pandas
 import io
 import logging
 from scipy import stats
+import numpy
 import plotnine
 plotnine.options.figure_size = (12, 8)
 from plotnine import *
@@ -170,12 +171,16 @@ def mark_weird(df, select_func=select_last_n, confidence=0.95, naive=False, col=
         selected = select_func(candidates)#[col]
         selected = selected[col]
         df.loc[df.index[i], ('mu', 'sigma', 'nb_obs')] = selected.mean(), selected.std(), len(selected)
+    df['standard_score'] = (df[col] - df['mu'])/df['sigma']
     if naive:
         one_side_conf = 1-(1-confidence)/2
         factor = stats.norm.ppf(one_side_conf)
+        df['likelihood'] = stats.norm.pdf(df['standard_score'])
     else:
         factor = stats.f.ppf(confidence, 1, df['nb_obs']-1)*(df['nb_obs']+1)/df['nb_obs']
         factor = factor**(1/2)
+        df['likelihood'] = stats.f.pdf(df['standard_score']**2, 1, df['nb_obs']-1)
+    df['log_likelihood'] = numpy.log(df['likelihood'])
     df['low_bound']  = df['mu'] - df['sigma']*factor
     df['high_bound'] = df['mu'] + df['sigma']*factor
     df['weird'] = (df[col] - df['mu']).abs() > factor*df['sigma']
@@ -200,8 +205,10 @@ def plot_evolution_node(df, col):
 
 
 def plot_evolution_cluster(df, col, changelog=None):
-    min_f = df[col].min()
-    max_f = df[col].max()
+    mid = df[col].median()
+    w = 0.2
+    min_f = min(mid*(1-w), df['low_bound'].min())
+    max_f = max(mid*(1+w), df['high_bound'].max())
     cluster = select_unique(df, 'cluster')
     for node in sorted(df['node'].unique()):
         plot = plot_evolution_node(df[df['node'] == node], col) +\
@@ -213,3 +220,26 @@ def plot_evolution_cluster(df, col, changelog=None):
             for date in dates:
                 plot += geom_vline(xintercept=date, linetype='dashed')
         print(plot)
+
+
+def plot_overview(df):
+    cluster = select_unique(df, 'cluster')
+    df = df.copy()
+    df['node_cpu'] = df['node'].astype(str) + ':' + df['cpu'].astype(str)
+    node_cat = df[['node', 'cpu', 'node_cpu']].drop_duplicates().sort_values(by=['node', 'cpu'], ascending=False)['node_cpu']
+    df['node_cpu'] = pandas.Categorical(df['node_cpu'], categories=node_cat, ordered=True)
+    likelihood_limit = 10
+    plot = ggplot() +\
+        aes(x='timestamp', y='node_cpu', color='log_likelihood') +\
+        geom_point(df[df.weird == 'NA'], color='#AAAAAA') +\
+        geom_point(df[df.log_likelihood > likelihood_limit], color='#00FF00') +\
+        geom_point(df[(df.weird == False) & (df.log_likelihood <= likelihood_limit)]) +\
+        geom_point(df[(df.weird == True) & (df.log_likelihood >= -likelihood_limit)]) +\
+        geom_point(df[(df.log_likelihood < -likelihood_limit)], color='#880088') +\
+        scale_color_gradient2(low='#FF0000', mid='#00FF00', high='#00FF00', limits=[-10, 10]) +\
+        theme_bw() +\
+        scale_x_datetime(breaks=date_breaks('3 months')) +\
+        labs(color='Log likelihood') +\
+        ylab('Node:CPU') +\
+        ggtitle(f'Overview of the cluster {cluster}')
+    return plot
