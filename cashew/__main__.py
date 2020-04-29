@@ -65,8 +65,6 @@ def main_notebook(args):
             'grisou',
             'gros',
             'ecotype',
-            'chiclet',
-            'chetemi',
     ]
     parser = argparse.ArgumentParser(description='Generation of non-regression notebooks.')
     parser.add_argument('clusters', help='Name of the clusters to test', nargs='+',
