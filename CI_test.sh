@@ -1,5 +1,5 @@
 TOKEN_PATH="GITLAB_TOKEN"
-REPO_URL="https://gitlab.in2p3.fr/tom.cornebize/g5k_data.git"
+REPO_URL="https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression.git"
 
 token=$(cat $TOKEN_PATH)
 if [ $? -ne 0 ] ; then

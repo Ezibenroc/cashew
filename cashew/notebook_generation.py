@@ -88,8 +88,8 @@ notebook_str = r'''
    },
    "outputs": [],
    "source": [
-    "csv_url_prefix = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data/raw/master/'\n",
-    "changelog_url = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data/raw/master/exp_changelog.csv'\n",
+    "csv_url_prefix = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression/raw/master/'\n",
+    "changelog_url = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression/raw/master/exp_changelog.csv'\n",
     "cluster = 'yeti'\n",
     "factor = 'avg_gflops'"
    ]
