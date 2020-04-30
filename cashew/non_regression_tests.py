@@ -1,6 +1,7 @@
 import requests
 import pandas
 import io
+import math
 import logging
 from scipy import stats
 import numpy
@@ -192,6 +193,17 @@ def mark_weird(df, select_func=select_last_n, confidence=0.95, naive=False, col=
     return df
 
 
+def get_date_breaks(df):
+    nb_days = (df['timestamp'].max() - df['timestamp'].min()).days
+    print(nb_days)
+    interval = math.floor(nb_days / 3 / 30)
+    if interval > 0:
+        interval = f'{interval} months'
+    else:
+        interval = '2 weeks'
+    return interval
+
+
 def plot_evolution_node(df, col):
     return ggplot(df) +\
             aes(x='timestamp', y=col) +\
@@ -205,7 +217,7 @@ def plot_evolution_node(df, col):
             theme_bw() +\
             geom_ribbon(aes(ymin='low_bound', ymax='high_bound'), color='grey', alpha=0.2) +\
             facet_wrap('cpu', labeller='label_both') +\
-            scale_x_datetime(breaks=date_breaks('3 months'))
+            scale_x_datetime(breaks=date_breaks(get_date_breaks(df)))
 
 
 def plot_evolution_cluster(df, col, changelog=None):
@@ -247,7 +259,7 @@ def plot_overview(df):
         geom_point(df[(df.log_likelihood < -likelihood_limit)], color='#880088') +\
         scale_color_gradient2(low='#FF0000', mid='#00FF00', high='#00FF00', limits=[-10, 10]) +\
         theme_bw() +\
-        scale_x_datetime(breaks=date_breaks('3 months')) +\
+        scale_x_datetime(breaks=date_breaks(get_date_breaks(df))) +\
         labs(color='Log likelihood') +\
         ylab('Node:CPU') +\
         ggtitle(f'Overview of the cluster {cluster}')

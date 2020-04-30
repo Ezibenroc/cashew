@@ -190,6 +190,10 @@ notebook_str = r'''
    "outputs": [],
    "source": [
     "%%time\n",
+    "import plotnine\n",
+    "nb_unique = len(marked[['node', 'cpu']].drop_duplicates())\n",
+    "height = max(6, nb_unique/8)\n",
+    "plotnine.options.figure_size = (10, height)\n",
     "nrt.plot_overview(marked)"
    ]
   },
