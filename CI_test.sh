@@ -15,5 +15,7 @@ GIT_LFS_SKIP_SMUDGE=1 git clone $REPO_URL repository --depth 1
 cd repository
 git config user.email "CI_test@$(hostname)"
 git config user.name "gitlab-CI-test"
-cashew test --output notebooks all && git add notebooks && git commit -m "[AUTOMATIC COMMIT] Generating test notebooks"
+cd notebooks && cashew test --output . all && cd .. || exit 1
+mkdir -p public && mv notebooks/*.html public || exit 1
+git add notebooks public && git commit -m "[AUTOMATIC COMMIT] Generating test notebooks"
 git push $remote_url
