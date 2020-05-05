@@ -195,7 +195,6 @@ def mark_weird(df, select_func=select_last_n, confidence=0.95, naive=False, col=
 
 def get_date_breaks(df):
     nb_days = (df['timestamp'].max() - df['timestamp'].min()).days
-    print(nb_days)
     interval = math.floor(nb_days / 3 / 30)
     if interval > 0:
         interval = f'{interval} months'
