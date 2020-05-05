@@ -67,6 +67,22 @@ def filter_changelog(df, cluster, node):
         result = pandas.DataFrame(columns=df.columns)
     return result
 
+
+def get_changes_from_changelog(df, cluster):
+    global_changes = []
+    local_changes = []
+    for _, row in df.iterrows():
+        if row['cluster'] == 'all' or cluster in row['cluster'].split('/'):
+            event = (row['date'], row['type'])
+            if row['node'] == 'all':
+                global_changes.append(event)
+            else:
+                for node in row['node'].split('/'):
+                    node = int(node)
+                    local_changes.append(event + (node,))
+    cols = 'date', 'type'
+    return pandas.DataFrame(global_changes, columns=cols), pandas.DataFrame(local_changes, columns=cols+('node',))
+
 def filter(df, **kwargs):
     '''
     Filter the dataframe according to the given named parameters.
@@ -226,6 +242,7 @@ def plot_evolution_cluster(df, col, changelog=None):
     max_f = max(mid*(1+w), df['high_bound'].max())
     cluster = select_unique(df, 'cluster')
     for node in sorted(df['node'].unique()):
+        print(f'{cluster}-{node}')
         plot = plot_evolution_node(df[df['node'] == node], col) +\
                 ggtitle(f'Evolution of the node {cluster}-{node}') +\
                 expand_limits(y=(min_f, max_f))
@@ -242,24 +259,36 @@ def plot_evolution_cluster(df, col, changelog=None):
         print(plot)
 
 
-def plot_overview(df):
+def plot_overview(df, changelog):
     cluster = select_unique(df, 'cluster')
     df = df.copy()
     df['node_cpu'] = df['node'].astype(str) + ':' + df['cpu'].astype(str)
     node_cat = df[['node', 'cpu', 'node_cpu']].drop_duplicates().sort_values(by=['node', 'cpu'], ascending=False)['node_cpu']
     df['node_cpu'] = pandas.Categorical(df['node_cpu'], categories=node_cat, ordered=True)
+    global_changes, local_changes = get_changes_from_changelog(changelog[changelog['date'] >= df['timestamp'].min()], cluster)
+    local_changes['ymin'] = local_changes['node'].astype(str) + ':' + str(df['cpu'].min())
+    local_changes['ymax'] = (local_changes['node']+1).astype(str) + ':' + str(df['cpu'].min())
+    local_changes['log_likelihood'] = 42  # not used, but otherwise plotnine complains...
     likelihood_limit = 10
+    points_args = {'stroke': 0, 'size': 3}
     plot = ggplot() +\
-        aes(x='timestamp', y='node_cpu', color='log_likelihood') +\
-        geom_point(df[df.weird == 'NA'], color='#AAAAAA') +\
-        geom_point(df[df.log_likelihood > likelihood_limit], color='#00FF00') +\
-        geom_point(df[(df.weird == False) & (df.log_likelihood <= likelihood_limit)]) +\
-        geom_point(df[(df.weird == True) & (df.log_likelihood >= -likelihood_limit)]) +\
-        geom_point(df[(df.log_likelihood < -likelihood_limit)], color='#880088') +\
-        scale_color_gradient2(low='#FF0000', mid='#00FF00', high='#00FF00', limits=[-10, 10]) +\
+        aes(x='timestamp', y='node_cpu', fill='log_likelihood') +\
+        geom_point(df[df.weird == 'NA'], fill='#AAAAAA', **points_args) +\
+        geom_point(df[df.log_likelihood > likelihood_limit], fill='#00FF00', **points_args) +\
+        geom_point(df[(df.weird == False) & (df.log_likelihood <= likelihood_limit)], **points_args) +\
+        geom_point(df[(df.weird == True) & (df.log_likelihood >= -likelihood_limit)], **points_args) +\
+        geom_point(df[(df.log_likelihood < -likelihood_limit)], fill='#880088', **points_args) +\
+        scale_fill_gradient2(low='#FF0000', mid='#00FF00', high='#00FF00', limits=[-10, 10]) +\
+        geom_vline(global_changes, aes(xintercept='date', color='type'), size=2) +\
+        geom_segment(local_changes, aes(x='date', xend='date', y='ymin', yend='ymax', color='type'),
+                    position=position_nudge(y=0.5), size=2) +\
+        scale_color_manual({
+            'protocol': '#888888',
+            'G5K': '#DD9500'},
+            guide=False) +\
         theme_bw() +\
         scale_x_datetime(breaks=date_breaks(get_date_breaks(df))) +\
-        labs(color='Log likelihood') +\
+        labs(fill='Log likelihood') +\
         ylab('Node:CPU') +\
         ggtitle(f'Overview of the cluster {cluster}')
     return plot

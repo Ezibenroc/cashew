@@ -193,8 +193,10 @@ notebook_str = r'''
     "import plotnine\n",
     "nb_unique = len(marked[['node', 'cpu']].drop_duplicates())\n",
     "height = max(6, nb_unique/8)\n",
+    "old_sizes = tuple(plotnine.options.figure_size)\n",
     "plotnine.options.figure_size = (10, height)\n",
-    "nrt.plot_overview(marked)"
+    "print(nrt.plot_overview(marked, changelog))\n",
+    "plotnine.options.figure_size = old_sizes"
    ]
   },
   {
