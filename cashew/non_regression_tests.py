@@ -142,11 +142,15 @@ def select_last_n(df, n=10):
     return selection
 
 
-def select_after_changelog(df, changelog, nmin=8, nmax=None):
+def select_after_changelog(df, changelog, nmin=8, nmax=None, keep=False):
     '''
     Asusmption: df contains data for a single node of a single cluster.
     Return measures that have been made after the last event regarding this node. It returns at least nmin measures, and
     at most nmax. If nmax is not specified, it will return all of them.
+
+    When keep is True, if the last measure of the dataframe is the first one done after a change, then this change is
+    discarded so as to return a larger dataframe. The goal is to show in the plots the anomalies that allowed us to
+    detect the changes.
     '''
     empty = pandas.DataFrame(columns=df.columns)
     if len(df) == 0:
@@ -162,12 +166,17 @@ def select_after_changelog(df, changelog, nmin=8, nmax=None):
     max_change = changelog['date'].max()
     if max_change != max_change:  # max_change is NaT (there was no change yet)
         max_change = pandas.to_datetime(0, unit='s')
-    df = df[df['timestamp'] >= max_change]
+    result = df[df['timestamp'] >= max_change]
+    # Now, if there is only one event, it means we are the first after the change, so we discard this change
+    if keep and len(result) == 0:
+        old_max = max_change
+        max_change = changelog[changelog['date'] < max_change]['date'].max()
+        if max_change != max_change:  # max_change is NaT (there was no change yet)
+            max_change = pandas.to_datetime(0, unit='s')
+        result = df[df['timestamp'] >= max_change]
     # Finally, we take the first nmax (if nmax is specified)
     if nmax is not None:
-        result = df.sort_values(by='timestamp').head(n=nmax)
-    else:
-        result = df
+        result = result.sort_values(by='timestamp').head(n=nmax)
     if len(result) < nmin:
         return empty
     else:
@@ -288,11 +297,11 @@ def plot_overview(df, changelog, confidence=0.95):
         aes(x='timestamp', y='node_cpu', fill='bounded_weirdness') +\
         geom_point(df[df.weird == 'NA'], fill='#AAAAAA', **points_args) +\
         geom_point(df[df.weird == False], **points_args) +\
-        geom_point(df[df.weird == True], **points_args) +\
+        geom_point(df[~df.weird.isin({'NA', False})], **points_args) +\
         scale_fill_gradient2(low='#0000FF', mid='#00FF00', high='#FF0000', limits=[-weirdness_limit, weirdness_limit]) +\
-        geom_vline(global_changes, aes(xintercept='date', color='type'), size=2) +\
+        geom_vline(global_changes, aes(xintercept='date', color='type'), size=1) +\
         geom_segment(local_changes, aes(x='date', xend='date', y='ymin', yend='ymax', color='type'),
-                    position=position_nudge(y=0.5), size=2) +\
+                    position=position_nudge(y=0.5), size=1) +\
         scale_color_manual({
             'protocol': '#888888',
             'G5K': '#DD9500'},
