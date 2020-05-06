@@ -91,7 +91,8 @@ notebook_str = r'''
     "csv_url_prefix = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression/raw/master/'\n",
     "changelog_url = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression/raw/master/exp_changelog.csv'\n",
     "cluster = 'yeti'\n",
-    "factor = 'avg_gflops'"
+    "factor = 'avg_gflops'\n",
+    "confidence = 0.9999"
    ]
   },
   {
@@ -177,7 +178,7 @@ notebook_str = r'''
    "outputs": [],
    "source": [
     "%%time\n",
-    "marked=nrt.mark_weird(df, select_func=lambda x: nrt.select_after_changelog(x, changelog, nmin=8, keep=True), naive=False, confidence=0.9999, col=factor)\n",
+    "marked=nrt.mark_weird(df, select_func=lambda x: nrt.select_after_changelog(x, changelog, nmin=8, keep=True), naive=False, confidence=confidence, col=factor)\n",
     "nb_weird = len(marked[marked.weird.isin({'positive', 'negative'})])\n",
     "nb_total = len(marked[marked.weird != 'NA'])\n",
     "print(f'{nb_weird/nb_total*100:.2f}% of measures are abnormal ({nb_weird}/{nb_total})')"
@@ -195,7 +196,7 @@ notebook_str = r'''
     "height = max(6, nb_unique/8)\n",
     "old_sizes = tuple(plotnine.options.figure_size)\n",
     "plotnine.options.figure_size = (10, height)\n",
-    "print(nrt.plot_overview(marked, changelog, confidence=0.9999))\n",
+    "print(nrt.plot_overview(marked, changelog, confidence=confidence))\n",
     "plotnine.options.figure_size = old_sizes"
    ]
   },
