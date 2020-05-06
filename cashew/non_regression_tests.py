@@ -202,9 +202,17 @@ def mark_weird(df, select_func=select_last_n, confidence=0.95, naive=False, col=
         factor = factor**(1/2)
         df['likelihood'] = stats.f.pdf(df['standard_score']**2, 1, df['nb_obs']-1)
     df['log_likelihood'] = numpy.log(df['likelihood'])
+    # weirdness of 0 if positive log-likelihood, else sign(x-mu)*abs(log-likelihood)
+    df['weirdness'] = df['log_likelihood']
+    df.loc[df['log_likelihood'] >= 0, 'weirdness'] = 0
+    df.loc[df['log_likelihood'] < 0, 'weirdness'] = numpy.sign(df[col]-df['mu'])*abs(df['log_likelihood'])
     df['low_bound']  = df['mu'] - df['sigma']*factor
     df['high_bound'] = df['mu'] + df['sigma']*factor
-    df['weird'] = (df[col] - df['mu']).abs() > factor*df['sigma']
+    df['weird_pos'] = df[col] - df['mu'] > factor*df['sigma']
+    df['weird_neg'] = df[col] - df['mu'] < -factor*df['sigma']
+    df['weird'] = df['weird_pos'] | df['weird_neg']
+    df.loc[df['weird_pos'] == True, 'weird'] = 'positive'
+    df.loc[df['weird_neg'] == True, 'weird'] = 'negative'
     df.loc[df['mu'].isna(), 'weird'] = 'NA'
     return df
 
@@ -224,10 +232,11 @@ def plot_evolution_node(df, col):
             aes(x='timestamp', y=col) +\
             geom_line() +\
             geom_point(aes(fill='weird'), size=1.5, stroke=0) +\
-            geom_point(df[df.weird == True], aes(fill='weird'), size=3, stroke=0) +\
+            geom_point(df[df.weird.isin({'positive', 'negative'})], aes(fill='weird'), size=3, stroke=0) +\
             scale_fill_manual({
                 'NA': '#AAAAAA',
-                True: '#FF0000',
+                'positive': '#FF0000',
+                'negative': '#0000FF',
                 False: '#00FF00'}) +\
             theme_bw() +\
             geom_ribbon(aes(ymin='low_bound', ymax='high_bound'), color='grey', alpha=0.2) +\
@@ -259,7 +268,7 @@ def plot_evolution_cluster(df, col, changelog=None):
         print(plot)
 
 
-def plot_overview(df, changelog):
+def plot_overview(df, changelog, confidence=0.95):
     cluster = select_unique(df, 'cluster')
     df = df.copy()
     df['node_cpu'] = df['node'].astype(str) + ':' + df['cpu'].astype(str)
@@ -268,17 +277,19 @@ def plot_overview(df, changelog):
     global_changes, local_changes = get_changes_from_changelog(changelog[changelog['date'] >= df['timestamp'].min()], cluster)
     local_changes['ymin'] = local_changes['node'].astype(str) + ':' + str(df['cpu'].min())
     local_changes['ymax'] = (local_changes['node']+1).astype(str) + ':' + str(df['cpu'].min())
-    local_changes['log_likelihood'] = 42  # not used, but otherwise plotnine complains...
-    likelihood_limit = 10
+    weirdness_limit = abs(numpy.log(stats.f.pdf(stats.f.ppf(confidence, 1, 20), 1, 20)))
+    print(f'Cutting the log-likelihood at {weirdness_limit:.2f} (due to the {confidence*100}% confidence)')
+    df['bounded_weirdness'] = df['weirdness']
+    df.loc[df['weirdness'] > weirdness_limit, 'bounded_weirdness'] = weirdness_limit
+    df.loc[df['weirdness'] < -weirdness_limit, 'bounded_weirdness'] = -weirdness_limit
+    local_changes['bounded_weirdness'] = 42  # not used, but otherwise plotnine complains...
     points_args = {'stroke': 0, 'size': 3}
     plot = ggplot() +\
-        aes(x='timestamp', y='node_cpu', fill='log_likelihood') +\
+        aes(x='timestamp', y='node_cpu', fill='bounded_weirdness') +\
         geom_point(df[df.weird == 'NA'], fill='#AAAAAA', **points_args) +\
-        geom_point(df[df.log_likelihood > likelihood_limit], fill='#00FF00', **points_args) +\
-        geom_point(df[(df.weird == False) & (df.log_likelihood <= likelihood_limit)], **points_args) +\
-        geom_point(df[(df.weird == True) & (df.log_likelihood >= -likelihood_limit)], **points_args) +\
-        geom_point(df[(df.log_likelihood < -likelihood_limit)], fill='#880088', **points_args) +\
-        scale_fill_gradient2(low='#FF0000', mid='#00FF00', high='#00FF00', limits=[-10, 10]) +\
+        geom_point(df[df.weird == False], **points_args) +\
+        geom_point(df[df.weird == True], **points_args) +\
+        scale_fill_gradient2(low='#0000FF', mid='#00FF00', high='#FF0000', limits=[-weirdness_limit, weirdness_limit]) +\
         geom_vline(global_changes, aes(xintercept='date', color='type'), size=2) +\
         geom_segment(local_changes, aes(x='date', xend='date', y='ymin', yend='ymax', color='type'),
                     position=position_nudge(y=0.5), size=2) +\
@@ -288,7 +299,7 @@ def plot_overview(df, changelog):
             guide=False) +\
         theme_bw() +\
         scale_x_datetime(breaks=date_breaks(get_date_breaks(df))) +\
-        labs(fill='Log likelihood') +\
+        labs(fill='Anomaly') +\
         ylab('Node:CPU') +\
         ggtitle(f'Overview of the cluster {cluster}')
     return plot
