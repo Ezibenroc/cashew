@@ -196,6 +196,18 @@ notebook_str = r'''
     "height = max(6, nb_unique/8)\n",
     "old_sizes = tuple(plotnine.options.figure_size)\n",
     "plotnine.options.figure_size = (10, height)\n",
+    "print(nrt.plot_overview_raw_data(marked, changelog, factor))\n",
+    "plotnine.options.figure_size = old_sizes"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%%time\n",
+    "plotnine.options.figure_size = (10, height)\n",
     "print(nrt.plot_overview(marked, changelog, confidence=confidence))\n",
     "plotnine.options.figure_size = old_sizes"
    ]

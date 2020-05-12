@@ -277,7 +277,7 @@ def plot_evolution_cluster(df, col, changelog=None):
         print(plot)
 
 
-def plot_overview(df, changelog, confidence=0.95):
+def _generic_overview(df, changelog, col):
     cluster = select_unique(df, 'cluster')
     df = df.copy()
     df['node_cpu'] = df['node'].astype(str) + ':' + df['cpu'].astype(str)
@@ -286,19 +286,13 @@ def plot_overview(df, changelog, confidence=0.95):
     global_changes, local_changes = get_changes_from_changelog(changelog[changelog['date'] >= df['timestamp'].min()], cluster)
     local_changes['ymin'] = local_changes['node'].astype(str) + ':' + str(df['cpu'].min())
     local_changes['ymax'] = (local_changes['node']+1).astype(str) + ':' + str(df['cpu'].min())
-    weirdness_limit = abs(numpy.log(stats.f.pdf(stats.f.ppf(confidence, 1, 20), 1, 20)))
-    print(f'Cutting the log-likelihood at {weirdness_limit:.2f} (due to the {confidence*100}% confidence)')
-    df['bounded_weirdness'] = df['weirdness']
-    df.loc[df['weirdness'] > weirdness_limit, 'bounded_weirdness'] = weirdness_limit
-    df.loc[df['weirdness'] < -weirdness_limit, 'bounded_weirdness'] = -weirdness_limit
-    local_changes['bounded_weirdness'] = 42  # not used, but otherwise plotnine complains...
+    local_changes[col] = 42  # not used, but otherwise plotnine complains...
     points_args = {'stroke': 0, 'size': 3}
     plot = ggplot() +\
-        aes(x='timestamp', y='node_cpu', fill='bounded_weirdness') +\
+        aes(x='timestamp', y='node_cpu', fill=col) +\
         geom_point(df[df.weird == 'NA'], fill='#AAAAAA', **points_args) +\
         geom_point(df[df.weird == False], **points_args) +\
         geom_point(df[~df.weird.isin({'NA', False})], **points_args) +\
-        scale_fill_gradient2(low='#0000FF', mid='#00FF00', high='#FF0000', limits=[-weirdness_limit, weirdness_limit]) +\
         geom_vline(global_changes, aes(xintercept='date', color='type'), size=1) +\
         geom_segment(local_changes, aes(x='date', xend='date', y='ymin', yend='ymax', color='type'),
                     position=position_nudge(y=0.5), size=1) +\
@@ -308,7 +302,24 @@ def plot_overview(df, changelog, confidence=0.95):
             guide=False) +\
         theme_bw() +\
         scale_x_datetime(breaks=date_breaks(get_date_breaks(df))) +\
-        labs(fill='Anomaly') +\
         ylab('Node:CPU') +\
         ggtitle(f'Overview of the cluster {cluster}')
+    return plot
+
+
+def plot_overview(df, changelog, confidence=0.95):
+    weirdness_limit = abs(numpy.log(stats.f.pdf(stats.f.ppf(confidence, 1, 20), 1, 20)))
+    print(f'Cutting the log-likelihood at {weirdness_limit:.2f} (due to the {confidence*100}% confidence)')
+    df['bounded_weirdness'] = df['weirdness']
+    df.loc[df['weirdness'] > weirdness_limit, 'bounded_weirdness'] = weirdness_limit
+    df.loc[df['weirdness'] < -weirdness_limit, 'bounded_weirdness'] = -weirdness_limit
+    plot = _generic_overview(df, changelog, 'bounded_weirdness') +\
+        scale_fill_gradient2(low='#0000FF', mid='#00FF00', high='#FF0000', limits=[-weirdness_limit, weirdness_limit]) +\
+        labs(fill='Anomaly')
+    return plot
+
+
+def plot_overview_raw_data(df, changelog, col):
+    plot = _generic_overview(df, changelog, col) +\
+        scale_fill_gradient2(low='#800080', mid='#EEEEEE', high='#FFA500', midpoint=df[col].mean())
     return plot
