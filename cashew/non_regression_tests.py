@@ -277,7 +277,7 @@ def plot_evolution_cluster(df, col, changelog=None):
         print(plot)
 
 
-def _generic_overview(df, changelog, col):
+def _generic_overview(df, changelog, col, grey_after_reset=True):
     cluster = select_unique(df, 'cluster')
     df = df.copy()
     df['node_cpu'] = df['node'].astype(str) + ':' + df['cpu'].astype(str)
@@ -290,7 +290,7 @@ def _generic_overview(df, changelog, col):
     points_args = {'stroke': 0, 'size': 3}
     plot = ggplot() +\
         aes(x='timestamp', y='node_cpu', fill=col) +\
-        geom_point(df[df.weird == 'NA'], fill='#AAAAAA', **points_args) +\
+        geom_point(df[df.weird == 'NA'], **{**points_args, **({'fill': '#AAAAAA'} if grey_after_reset else {})}) +\
         geom_point(df[df.weird == False], **points_args) +\
         geom_point(df[~df.weird.isin({'NA', False})], **points_args) +\
         geom_vline(global_changes, aes(xintercept='date', color='type'), size=1) +\
@@ -320,6 +320,6 @@ def plot_overview(df, changelog, confidence=0.95):
 
 
 def plot_overview_raw_data(df, changelog, col):
-    plot = _generic_overview(df, changelog, col) +\
+    plot = _generic_overview(df, changelog, col, grey_after_reset=False) +\
         scale_fill_gradient2(low='#800080', mid='#EEEEEE', high='#FFA500', midpoint=df[col].mean())
     return plot
