@@ -142,15 +142,15 @@ def select_last_n(df, n=10):
     return selection
 
 
-def select_after_changelog(df, changelog, nmin=8, nmax=None, keep=False):
+def select_after_changelog(df, changelog, nmin=8, nmax=None, keep=0):
     '''
     Asusmption: df contains data for a single node of a single cluster.
     Return measures that have been made after the last event regarding this node. It returns at least nmin measures, and
     at most nmax. If nmax is not specified, it will return all of them.
 
-    When keep is True, if the last measure of the dataframe is the first one done after a change, then this change is
-    discarded so as to return a larger dataframe. The goal is to show in the plots the anomalies that allowed us to
-    detect the changes.
+    When keep is non-null, if the last measure(s) of the dataframe is/are the first one(s) done after a change, then
+    this change is discarded so as to return a larger dataframe. The goal is to show in the plots the anomalies that
+    allowed us to detect the changes.
     '''
     empty = pandas.DataFrame(columns=df.columns)
     if len(df) == 0:
@@ -167,8 +167,9 @@ def select_after_changelog(df, changelog, nmin=8, nmax=None, keep=False):
     if max_change != max_change:  # max_change is NaT (there was no change yet)
         max_change = pandas.to_datetime(0, unit='s')
     result = df[df['timestamp'] >= max_change]
-    # Now, if there is only one event, it means we are the first after the change, so we discard this change
-    if keep and len(result) == 0:
+    # Now, if there are too few events, it means we are right after the change, so we discard this change
+    if keep > 0 and len(result) < keep:
+        assert keep < nmin
         old_max = max_change
         max_change = changelog[changelog['date'] < max_change]['date'].max()
         if max_change != max_change:  # max_change is NaT (there was no change yet)
