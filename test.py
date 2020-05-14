@@ -4,8 +4,10 @@ from random import random, randint, shuffle
 import os
 import pandas
 from numpy import dtype
+from numpy.testing import assert_equal, assert_almost_equal, assert_raises
 from io import StringIO
 from cashew.archive_extraction import read_performance, read_database, write_database
+import cashew.non_regression_tests as nrt
 
 
 model_csv = '''
@@ -15,12 +17,12 @@ dgemm, 1441, 338,2072,329.063663,7.558411e-02,10,1,dahu,1870094,0,2019-06-14,0
 dgemm, 3908,3279, 547,213.282718,4.462024e-01,23,1,dahu,1870094,1,2019-06-14,0
 '''
 
+def get_df(csv):
+    df = pandas.read_csv(StringIO(csv))
+    df.columns = df.columns.str.strip()
+    return df
 
-class BasicTest(unittest.TestCase):
-    @staticmethod
-    def get_df(csv):
-        return pandas.read_csv(StringIO(csv))
-
+class ArchiveExtractionTest(unittest.TestCase):
     def check_dataframe_equality(self, df1, df2):
         self.assertEqual(len(df1), len(df2))
         self.assertEqual(set(df1.columns), set(df2.columns))
@@ -57,7 +59,7 @@ class BasicTest(unittest.TestCase):
 #            self.check_dataframe_equality(expected, df)
 
     def test_read_write_simple_database(self):
-        self.check_read_write_database(self.get_df(model_csv))
+        self.check_read_write_database(get_df(model_csv))
 
     @staticmethod
     def generate_test_dataframe():
@@ -82,6 +84,76 @@ class BasicTest(unittest.TestCase):
     def test_read_write_complex_database(self):
         self.check_read_write_database(self.generate_test_dataframe())
 
+
+class NonRegressionTest(unittest.TestCase):
+    @staticmethod
+    def get_changelog():
+        df = get_df('''
+        date,cluster,node,type,description
+        2019-04-13,all,all,protocol,randomisation
+        2019-08-15,dahu,13/14/15/16,G5K,cooling issue
+        2019-10-18,all,all,protocol,randomisation again
+        ''')
+        df['date'] = pandas.to_datetime(df['date'])
+        return df
+
+    @staticmethod
+    def get_dataframe():
+        rows = ['timestamp,cluster,node,cpu,my_col,my_id']
+        for i in range(1, 31):
+            rows.append(f'''
+            2019-07-{i:02d},dahu,10,0,100,A
+            2019-07-{i:02d},dahu,10,1,200,B
+            2019-07-{i:02d},dahu,14,0,300,C
+            2019-07-{i:02d},dahu,14,1,400,D
+            ''')
+        for i in range(1, 31):
+            rows.append(f'''
+            2019-09-{i:02d},dahu,10,0,100,A
+            2019-09-{i:02d},dahu,10,1,200,B
+            2019-09-{i:02d},dahu,14,0,301,E
+            2019-09-{i:02d},dahu,14,1,401,F
+            ''')
+        for i in range(1, 31):
+            rows.append(f'''
+            2019-12-{i:02d},dahu,10,0,101,G
+            2019-12-{i:02d},dahu,10,1,201,H
+            2019-12-{i:02d},dahu,14,0,302,I
+            2019-12-{i:02d},dahu,14,1,402,J
+            ''')
+        rows = '\n'.join(rows)
+        df = get_df(rows)
+        df['timestamp'] = pandas.to_datetime(df['timestamp'])
+        return df
+
+
+    def test_mu_sigma(self):
+        NA = float('NaN')
+        nmin=8
+        keep=3
+        changelog = self.get_changelog()
+        df = self.get_dataframe()
+        marked=nrt.mark_weird(df, select_func=lambda x: nrt.select_after_changelog(x, changelog, nmin=nmin, keep=keep),
+                naive=False, confidence=0.95, col="my_col")
+        for key in df['my_id'].unique():
+            tmp = marked[marked['my_id'] == key]
+            avg = float(list(tmp['my_col'])[0])
+            count = len(tmp)
+            if key in ['A', 'B', 'C', 'D']:
+                keep_prefix = False
+                expected = [NA]*nmin + [avg]*(count-nmin)
+            else:
+                keep_prefix = True
+                expected = [avg-1]*keep + [NA]*(nmin-keep) + [avg]*(count-nmin)
+            real = list(tmp['mu'])
+            assert_equal(real[keep:], expected[keep:])
+            assert_almost_equal(real[:keep], expected[:keep], decimal=1)
+            expected_sigma = [0*mu for mu in expected]
+            real_sigma = list(tmp['sigma'])
+            assert_equal(real_sigma[keep:], expected_sigma[keep:])
+            assert_almost_equal(real_sigma[:keep], expected_sigma[:keep], decimal=0)
+            if keep_prefix:
+                assert_raises(AssertionError, assert_equal, real_sigma[:keep], expected_sigma[:keep])
 
 if __name__ == "__main__":
     unittest.main()
