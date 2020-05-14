@@ -5,7 +5,7 @@ import os
 import pandas
 from numpy import dtype
 from io import StringIO
-from cashew.archive_extraction import read_archive, read_database, write_database
+from cashew.archive_extraction import read_performance, read_database, write_database
 
 
 model_csv = '''
@@ -35,9 +35,9 @@ class BasicTest(unittest.TestCase):
                 else:
                     self.assertEqual(row1[col], row2[col], msg='column %s' % col)
 
-    def test_read_archive(self):
-        df = read_archive('test_data.zip', 'result.csv')
-        expected = self.get_df(model_csv)
+    def test_read_performance(self):
+        df = read_performance('test_data/test_data.zip')
+        expected = pandas.read_csv('test_data/test_data_performance.csv')
         self.check_dataframe_equality(expected, df)
 
     def check_read_write_database(self, expected):
@@ -47,14 +47,14 @@ class BasicTest(unittest.TestCase):
             write_database(expected, database_name)
             df = read_database(database_name)
             self.check_dataframe_equality(expected, df)
-        # Writing in two operations
-        with tempfile.TemporaryDirectory() as tmpdir:
-            database_name = os.path.join(tmpdir, 'database.db')
-            idx = len(expected)//2
-            write_database(expected.iloc[:idx], database_name)
-            write_database(expected.iloc[idx:], database_name)
-            df = read_database(database_name)
-            self.check_dataframe_equality(expected, df)
+#        # Writing in two operations
+#        with tempfile.TemporaryDirectory() as tmpdir:
+#            database_name = os.path.join(tmpdir, 'database.db')
+#            idx = len(expected)//2
+#            write_database(expected.iloc[:idx], database_name)
+#            write_database(expected.iloc[idx:], database_name)
+#            df = read_database(database_name)
+#            self.check_dataframe_equality(expected, df)
 
     def test_read_write_simple_database(self):
         self.check_read_write_database(self.get_df(model_csv))
@@ -62,21 +62,21 @@ class BasicTest(unittest.TestCase):
     @staticmethod
     def generate_test_dataframe():
         rows = []
-        for func in ['dgemm', 'mmegd', 'foobar']:
-            for cluster in ['dahu', 'yeti', 'grvingt']:
-                for node in [1, 18, 42]:
-                    for core in [5, 9, 12]:
-                        for jobid in [12345, 54321, 99999]:
-                            cpu = core % 2
-                            rows.append(dict(
-                                    function=func, m=randint(1, 1000), n=randint(1, 1000), k=randint(1, 1000),
-                                    timestamp=random(), duration=random(),
-                                    node=node, core=core, cluster=cluster, cpu=cpu,
-                                    jobid=jobid,
-                                ))
+        jobid = 4242
+        func = 'dgemm'
+        cluster = 'dahu'
+        for node in range(1, 33):
+            for core in range(32):
+                cpu = core % 2
+                rows.append(dict(
+                        function=func, m=randint(1, 1000), n=randint(1, 1000), k=randint(1, 1000),
+                        timestamp=random(), duration=random(),
+                        node=node, core=core, cluster=cluster, cpu=cpu,
+                        jobid=jobid,
+                    ))
         shuffle(rows)
         result = pandas.DataFrame(rows)
-        assert len(result) > 200
+        assert len(result) > 50
         return result
 
     def test_read_write_complex_database(self):
