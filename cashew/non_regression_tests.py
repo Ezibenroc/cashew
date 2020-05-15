@@ -135,7 +135,7 @@ def plot_latest_distribution(df, col='avg_gflops'):
             ggtitle(title)
 
 
-def _compute_mu_sigma(df, changelog, col, nmin, keep, window=5):
+def _compute_mu_sigma(df, changelog, col, nmin, keep, window):
     '''
     For each (node, cpu) pair of the given dataframe, this function computes various summary values (such as mean and
     standard deviation) in between two changes of the given changelog.
@@ -154,6 +154,7 @@ def _compute_mu_sigma(df, changelog, col, nmin, keep, window=5):
                 mask = ((df['node'] == node) & (df['cpu'] == cpu) &
                        (df['timestamp'] >= min_date) & (df['timestamp'] < max_date))
                 local_df = df[mask]
+                df.loc[mask, 'rolling_avg'] = local_df[col].rolling(window=window).mean()
                 values = {
                     'mu'    : local_df[col].expanding(nmin).mean(),
                     'sigma' : local_df[col].expanding(nmin).std(),
@@ -173,7 +174,7 @@ def _compute_mu_sigma(df, changelog, col, nmin, keep, window=5):
                         df.loc[keep_mask, keep_col] = float(previous_row[keep_col])
 
 
-def _mark_weird(df, confidence, naive, col):
+def _mark_weird(df, confidence, naive, window, col):
     '''
     Assume that the function _compute_mu_sigma has been called previously.
     '''
@@ -183,8 +184,9 @@ def _mark_weird(df, confidence, naive, col):
         factor = stats.norm.ppf(one_side_conf)
         df['likelihood'] = stats.norm.pdf(df['standard_score'])
     else:
-        factor = stats.f.ppf(confidence, 1, df['nb_obs']-1)*(df['nb_obs']+1)/df['nb_obs']
-        factor = factor**(1/2)
+        base_factor = stats.f.ppf(confidence, 1, df['nb_obs']-1)
+        factor = (base_factor*(df['nb_obs']+1)/df['nb_obs'])**(1/2)
+        factor_windowed = (base_factor*(df['nb_obs']+window)/(df['nb_obs']*window))**(1/2)
         df['likelihood'] = stats.f.pdf(df['standard_score']**2, 1, df['nb_obs']-1)
     df['log_likelihood'] = numpy.log(df['likelihood'])
     # weirdness of 0 if positive log-likelihood, else sign(x-mu)*abs(log-likelihood)
@@ -199,10 +201,20 @@ def _mark_weird(df, confidence, naive, col):
     df.loc[df['weird_pos'] == True, 'weird'] = 'positive'
     df.loc[df['weird_neg'] == True, 'weird'] = 'negative'
     df.loc[df['mu'].isna(), 'weird'] = 'NA'
+    # Then, the same thing but windowed
+    if not naive:  # no factor_windowed otherwise
+        df['windowed_low_bound']  = df['mu_old'] - df['sigma_old']*factor_windowed
+        df['windowed_high_bound'] = df['mu_old'] + df['sigma_old']*factor_windowed
+        df['windowed_weird_pos'] = df['rolling_avg'] - df['mu_old'] > factor_windowed*df['sigma_old']
+        df['windowed_weird_neg'] = df['rolling_avg'] - df['mu_old'] < -factor_windowed*df['sigma_old']
+        df['windowed_weird'] = df['windowed_weird_pos'] | df['windowed_weird_neg']
+        df.loc[df['windowed_weird_pos'] == True, 'windowed_weird'] = 'positive'
+        df.loc[df['windowed_weird_neg'] == True, 'windowed_weird'] = 'negative'
+        df.loc[df['mu_old'].isna(), 'windowed_weird'] = 'NA'
     return df
 
 
-def mark_weird(df, changelog, confidence=0.95, naive=False, col='avg_gflops', nmin=8, keep=3):
+def mark_weird(df, changelog, confidence=0.95, naive=False, col='avg_gflops', nmin=8, keep=3, window=5):
     '''
     Mark the points of the given columns that are out of the prediction region of given confidence.
     The confidence should be a number between 0 and 1 (e.g. 0.95 for 95% confidence).
@@ -210,8 +222,10 @@ def mark_weird(df, changelog, confidence=0.95, naive=False, col='avg_gflops', nm
     tighter prediction region.
     '''
     df = df.copy()
-    _compute_mu_sigma(df, changelog, col=col, nmin=nmin, keep=keep)
-    _mark_weird(df, confidence=confidence, naive=naive, col=col)
+    _compute_mu_sigma(df, changelog, col=col, nmin=nmin, keep=keep, window=window)
+    _mark_weird(df, confidence=confidence, naive=naive, col=col, window=window)
+    df.window_size = window
+    df.interest_col = col
     return df
 
 
@@ -225,24 +239,24 @@ def get_date_breaks(df):
     return interval
 
 
-def plot_evolution_node(df, col):
+def plot_evolution_node(df, col, low_col, high_col, weird_col):
     return ggplot(df) +\
             aes(x='timestamp', y=col) +\
             geom_line() +\
-            geom_point(aes(fill='weird'), size=1.5, stroke=0) +\
-            geom_point(df[df.weird.isin({'positive', 'negative'})], aes(fill='weird'), size=3, stroke=0) +\
+            geom_point(aes(fill=weird_col), size=1.5, stroke=0) +\
+            geom_point(df[df[weird_col].isin({'positive', 'negative'})], aes(fill=weird_col), size=3, stroke=0) +\
             scale_fill_manual({
                 'NA': '#AAAAAA',
                 'positive': '#FF0000',
                 'negative': '#0000FF',
                 False: '#00FF00'}) +\
             theme_bw() +\
-            geom_ribbon(aes(ymin='low_bound', ymax='high_bound'), color='grey', alpha=0.2) +\
+            geom_ribbon(aes(ymin=low_col, ymax=high_col), color='grey', alpha=0.2) +\
             facet_wrap('cpu', labeller='label_both') +\
             scale_x_datetime(breaks=date_breaks(get_date_breaks(df)))
 
 
-def plot_evolution_cluster(df, col, changelog=None):
+def _generic_plot_evolution(df, col, low_col, high_col, weird_col, changelog=None):
     mid = df[col].median()
     w = 0.2
     min_f = min(mid*(1-w), df['low_bound'].min())
@@ -250,7 +264,7 @@ def plot_evolution_cluster(df, col, changelog=None):
     cluster = select_unique(df, 'cluster')
     for node in sorted(df['node'].unique()):
         print(f'{cluster}-{node}')
-        plot = plot_evolution_node(df[df['node'] == node], col) +\
+        plot = plot_evolution_node(df[df['node'] == node], col, low_col, high_col, weird_col) +\
                 ggtitle(f'Evolution of the node {cluster}-{node}') +\
                 expand_limits(y=(min_f, max_f))
         if changelog is not None:
@@ -264,6 +278,15 @@ def plot_evolution_cluster(df, col, changelog=None):
             plot += geom_label(log[log['type'] == 'G5K'], aes(label='description', x='date', color='type'), y=max_f, size=8)
             plot += geom_label(log[log['type'] != 'G5K'], aes(label='description', x='date', color='type'), y=min_f, size=8)
         print(plot)
+
+
+def plot_evolution_cluster(df, changelog=None):
+    _generic_plot_evolution(df, df.interest_col, low_col='low_bound', high_col='high_bound', weird_col='weird', changelog=changelog)
+
+
+def plot_evolution_cluster_windowed(df, changelog=None):
+    _generic_plot_evolution(df, col='rolling_avg', low_col='windowed_low_bound', high_col='windowed_high_bound',
+            weird_col='windowed_weird', changelog=changelog)
 
 
 def _generic_overview(df, changelog, col, grey_after_reset=True):
