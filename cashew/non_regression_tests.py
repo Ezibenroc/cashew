@@ -168,10 +168,14 @@ def _compute_mu_sigma(df, changelog, col, nmin, keep, window):
                               (df['timestamp'] < min_date)]
                 if len(previous) > 0 and keep > 0:
                     assert keep < nmin
-                    previous_row = previous[previous['timestamp'] == previous['timestamp'].max()]
+                    previous_window = previous.sort_values(by='timestamp').tail(n=window)
+                    previous_row = previous_window.tail(n=1)
                     keep_mask = mask & ((df['nb_obs'].isna()) | (df['nb_obs'] < keep))
                     for keep_col in ['mu', 'sigma', 'nb_obs']:
                         df.loc[keep_mask, keep_col] = float(previous_row[keep_col])
+                    tmp_df = pandas.concat([previous_window, df[keep_mask]])
+                    avg = tmp_df[col].rolling(window=window).mean()
+                    df.loc[keep_mask, 'rolling_avg'] = avg
 
 
 def _mark_weird(df, confidence, naive, window, col):

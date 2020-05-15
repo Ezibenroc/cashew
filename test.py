@@ -164,7 +164,12 @@ class NonRegressionTest(unittest.TestCase):
             expected_sigma = [0*mu for mu in expected]
             real_sigma = list(tmp['sigma'])
             assert_equal(real_sigma, expected_sigma)
-            assert_equal(list(tmp['rolling_avg']), [NA]*(window-1) + [avg]*(count-window+1))
+            real_rolling = list(tmp['rolling_avg'])
+            assert_equal(real_rolling[keep:], [NA]*(window-1-keep) + [avg]*(count-window+1))
+            if key in ['A', 'B', 'C', 'D']:
+                assert_equal(real_rolling[:keep], [NA]*keep)
+            else:
+                assert_almost_equal(real_rolling[:keep], [avg-1]*keep, decimal=0)
 
     def test_simple_mu_sigma(self):
         nmin=8
