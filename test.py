@@ -148,8 +148,7 @@ class NonRegressionTest(unittest.TestCase):
         keep=3
         changelog = self.get_changelog()
         df = self.get_dataframe()
-        marked=nrt.mark_weird(df, select_func=lambda x: nrt.select_after_changelog(x, changelog, nmin=nmin, keep=keep),
-                naive=False, confidence=0.95, col="my_col")
+        marked = nrt._compute_mu_sigma(df, changelog, col='my_col', nmin=nmin, keep=keep)
         for key in df['my_id'].unique():
             tmp = marked[marked['my_id'] == key]
             avg = float(list(tmp['my_col'])[0])
@@ -175,12 +174,14 @@ class NonRegressionTest(unittest.TestCase):
         keep=3
         changelog = self.get_changelog()
         df = self.get_dataframe_simple(N=100)
-        marked=nrt.mark_weird(df, select_func=lambda x: nrt.select_after_changelog(x, changelog, nmin=nmin, keep=keep),
-                naive=False, confidence=0.95, col="my_col")
+        #marked=nrt.mark_weird(df, select_func=lambda x: nrt.select_after_changelog(x, changelog, nmin=nmin, keep=keep),
+        #        naive=False, confidence=0.95, col="my_col")
+        marked = nrt._compute_mu_sigma(df, changelog, col='my_col', nmin=nmin, keep=keep)
         expected_mu = list(marked['my_col'].expanding(nmin).mean().shift(1))
         expected_sigma = list(marked['my_col'].expanding(nmin).std().shift(1))
         expected_nbobs = list(marked['my_col'].expanding(nmin).count().shift(1))
         assert_almost_equal(list(marked['mu']), expected_mu)
+        assert_almost_equal(list(marked['sigma']), expected_sigma)
         assert_equal(list(marked['nb_obs'])[nmin:], expected_nbobs[nmin:])
 
 if __name__ == "__main__":

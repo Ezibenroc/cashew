@@ -184,14 +184,7 @@ def select_after_changelog(df, changelog, nmin=8, nmax=None, keep=0):
         return result
 
 
-def mark_weird(df, select_func=select_last_n, confidence=0.95, naive=False, col='avg_gflops'):
-    '''
-    Mark the points of the given columns that are out of the prediction region of given confidence.
-    The confidence should be a number between 0 and 1 (e.g. 0.95 for 95% confidence).
-    If naive is True, then it assumes that the sample variane is exactly equal to the true variance, which results in a
-    tighter prediction region.
-    '''
-    df = df.copy()
+def _compute_mu_sigma(df, changelog, col, nmin, keep):
     NAN = float('NaN')
     df['mu'] = NAN
     df['sigma'] = NAN
@@ -199,9 +192,20 @@ def mark_weird(df, select_func=select_last_n, confidence=0.95, naive=False, col=
     for i in range(0, len(df)):
         row = df.iloc[i]
         candidates = df[(df['node'] == row['node']) & (df['cpu'] == row['cpu']) & (df['timestamp'] <= row['timestamp'])]
-        selected = select_func(candidates)#[col]
-        selected = selected[col]
+        selected = select_after_changelog(candidates, changelog, nmin=nmin, keep=keep)[col]
         df.loc[df.index[i], ('mu', 'sigma', 'nb_obs')] = selected.mean(), selected.std(), len(selected)
+    return df
+
+
+def mark_weird(df, changelog, confidence=0.95, naive=False, col='avg_gflops', nmin=8, keep=3):
+    '''
+    Mark the points of the given columns that are out of the prediction region of given confidence.
+    The confidence should be a number between 0 and 1 (e.g. 0.95 for 95% confidence).
+    If naive is True, then it assumes that the sample variane is exactly equal to the true variance, which results in a
+    tighter prediction region.
+    '''
+    df = df.copy()
+    _compute_mu_sigma(df, changelog, col=col, nmin=nmin, keep=keep)
     df['standard_score'] = (df[col] - df['mu'])/df['sigma']
     if naive:
         one_side_conf = 1-(1-confidence)/2
