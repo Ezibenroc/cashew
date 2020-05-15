@@ -3,6 +3,7 @@ import tempfile
 from random import random, randint, shuffle
 import os
 import pandas
+import numpy
 from numpy import dtype
 from numpy.testing import assert_equal, assert_almost_equal, assert_raises
 from io import StringIO
@@ -126,6 +127,20 @@ class NonRegressionTest(unittest.TestCase):
         df['timestamp'] = pandas.to_datetime(df['timestamp'])
         return df
 
+    @staticmethod
+    def get_dataframe_simple(cluster='dahu', node=42, cpu=0, colname='my_col', start_time=1580000000, N=100,
+                             mu=12, sigma=4, seed=42):
+        numpy.random.seed(seed)
+        rows = []
+        for i in range(start_time, start_time+N*10, 10):
+            rows.append({
+                'timestamp': pandas.to_datetime(i, unit='s'),
+                'cluster': cluster,
+                'node': node,
+                'cpu': cpu,
+                colname: numpy.random.normal(mu, sigma),
+            })
+        return pandas.DataFrame(rows)
 
     def test_mu_sigma(self):
         NA = float('NaN')
@@ -154,6 +169,19 @@ class NonRegressionTest(unittest.TestCase):
             assert_almost_equal(real_sigma[:keep], expected_sigma[:keep], decimal=0)
             if keep_prefix:
                 assert_raises(AssertionError, assert_equal, real_sigma[:keep], expected_sigma[:keep])
+
+    def test_simple_mu_sigma(self):
+        nmin=8
+        keep=3
+        changelog = self.get_changelog()
+        df = self.get_dataframe_simple(N=100)
+        marked=nrt.mark_weird(df, select_func=lambda x: nrt.select_after_changelog(x, changelog, nmin=nmin, keep=keep),
+                naive=False, confidence=0.95, col="my_col")
+        expected_mu = list(marked['my_col'].expanding(nmin).mean().shift(1))
+        expected_sigma = list(marked['my_col'].expanding(nmin).std().shift(1))
+        expected_nbobs = list(marked['my_col'].expanding(nmin).count().shift(1))
+        assert_almost_equal(list(marked['mu']), expected_mu)
+        assert_equal(list(marked['nb_obs'])[nmin:], expected_nbobs[nmin:])
 
 if __name__ == "__main__":
     unittest.main()
