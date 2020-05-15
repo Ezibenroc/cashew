@@ -178,7 +178,7 @@ notebook_str = r'''
    "outputs": [],
    "source": [
     "%%time\n",
-    "marked=nrt.mark_weird(df, changelog, nmin=8, keep=4, naive=False, confidence=confidence, col=factor)\n",
+    "marked=nrt.mark_weird(df, changelog, nmin=10, keep=5, window=5, naive=False, confidence=confidence, col=factor)\n",
     "nb_weird = len(marked[marked.weird.isin({'positive', 'negative'})])\n",
     "nb_total = len(marked[marked.weird != 'NA'])\n",
     "print(f'{nb_weird/nb_total*100:.2f}% of measures are abnormal ({nb_weird}/{nb_total})')"
@@ -219,7 +219,17 @@ notebook_str = r'''
    "outputs": [],
    "source": [
     "%%time\n",
-    "nrt.plot_evolution_cluster(marked, factor, changelog)"
+    "nrt.plot_evolution_cluster(marked, changelog=changelog)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%%time\n",
+    "nrt.plot_evolution_cluster_windowed(marked, changelog=changelog)"
    ]
   }
  ],
