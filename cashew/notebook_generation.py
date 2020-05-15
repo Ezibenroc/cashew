@@ -178,7 +178,7 @@ notebook_str = r'''
    "outputs": [],
    "source": [
     "%%time\n",
-    "marked=nrt.mark_weird(df, select_func=lambda x: nrt.select_after_changelog(x, changelog, nmin=8, keep=4), naive=False, confidence=confidence, col=factor)\n",
+    "marked=nrt.mark_weird(df, changelog, nmin=8, keep=4, naive=False, confidence=confidence, col=factor)\n",
     "nb_weird = len(marked[marked.weird.isin({'positive', 'negative'})])\n",
     "nb_total = len(marked[marked.weird != 'NA'])\n",
     "print(f'{nb_weird/nb_total*100:.2f}% of measures are abnormal ({nb_weird}/{nb_total})')"
