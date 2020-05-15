@@ -154,20 +154,15 @@ class NonRegressionTest(unittest.TestCase):
             avg = float(list(tmp['my_col'])[0])
             count = len(tmp)
             if key in ['A', 'B', 'C', 'D']:
-                keep_prefix = False
                 expected = [NA]*nmin + [avg]*(count-nmin)
             else:
-                keep_prefix = True
                 expected = [avg-1]*keep + [NA]*(nmin-keep) + [avg]*(count-nmin)
             real = list(tmp['mu'])
             assert_equal(real[keep:], expected[keep:])
             assert_almost_equal(real[:keep], expected[:keep], decimal=1)
             expected_sigma = [0*mu for mu in expected]
             real_sigma = list(tmp['sigma'])
-            assert_equal(real_sigma[keep:], expected_sigma[keep:])
-            assert_almost_equal(real_sigma[:keep], expected_sigma[:keep], decimal=0)
-            if keep_prefix:
-                assert_raises(AssertionError, assert_equal, real_sigma[:keep], expected_sigma[:keep])
+            assert_equal(real_sigma, expected_sigma)
 
     def test_simple_mu_sigma(self):
         nmin=8

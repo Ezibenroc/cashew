@@ -135,65 +135,42 @@ def plot_latest_distribution(df, col='avg_gflops'):
             ggtitle(title)
 
 
-def select_last_n(df, n=10):
-    selection = df.tail(n=n)
-    if len(df) < n:
-        selection = pandas.DataFrame(columns=df.columns)
-    return selection
-
-
-def select_after_changelog(df, changelog, nmin=8, nmax=None, keep=0):
+def _compute_mu_sigma(df, changelog, col, nmin, keep, window=5):
     '''
-    Asusmption: df contains data for a single node of a single cluster.
-    Return measures that have been made after the last event regarding this node. It returns at least nmin measures, and
-    at most nmax. If nmax is not specified, it will return all of them.
-
-    When keep is non-null, if the last measure(s) of the dataframe is/are the first one(s) done after a change, then
-    this change is discarded so as to return a larger dataframe. The goal is to show in the plots the anomalies that
-    allowed us to detect the changes.
+    For each (node, cpu) pair of the given dataframe, this function computes various summary values (such as mean and
+    standard deviation) in between two changes of the given changelog.
+    If less than `keep` measures have been made since the last change, then the summary values are made equal to the
+    ones from the measure made just before this change.
+    If more than `keep` but less than `nmin` measures have been made since the last change, then the summary values are
+    not defined (NaN).
     '''
-    empty = pandas.DataFrame(columns=df.columns)
-    if len(df) == 0:
-        return empty
     cluster = select_unique(df, 'cluster')
-    node = select_unique(df, 'node')
-    changelog = filter_changelog(changelog, cluster, node)
-    # We remove all the changes that will happen after the most recent event
-    changelog = changelog[changelog['date'] <= df['timestamp'].max()]
-    # We also remove the most recent event
-    df = df[df['timestamp'] < df['timestamp'].max()]
-    # Then, we remove all the events that have happened before the most recent change
-    max_change = changelog['date'].max()
-    if max_change != max_change:  # max_change is NaT (there was no change yet)
-        max_change = pandas.to_datetime(0, unit='s')
-    result = df[df['timestamp'] >= max_change]
-    # Now, if there are too few events, it means we are right after the change, so we discard this change
-    if keep > 0 and len(result) < keep:
-        assert keep < nmin
-        old_max = max_change
-        max_change = changelog[changelog['date'] < max_change]['date'].max()
-        if max_change != max_change:  # max_change is NaT (there was no change yet)
-            max_change = pandas.to_datetime(0, unit='s')
-        result = df[df['timestamp'] >= max_change]
-    # Finally, we take the first nmax (if nmax is specified)
-    if nmax is not None:
-        result = result.sort_values(by='timestamp').head(n=nmax)
-    if len(result) < nmin:
-        return empty
-    else:
-        return result
-
-
-def _compute_mu_sigma(df, changelog, col, nmin, keep):
-    NAN = float('NaN')
-    df['mu'] = NAN
-    df['sigma'] = NAN
-    df['nb_obs'] = NAN
-    for i in range(0, len(df)):
-        row = df.iloc[i]
-        candidates = df[(df['node'] == row['node']) & (df['cpu'] == row['cpu']) & (df['timestamp'] <= row['timestamp'])]
-        selected = select_after_changelog(candidates, changelog, nmin=nmin, keep=keep)[col]
-        df.loc[df.index[i], ('mu', 'sigma', 'nb_obs')] = selected.mean(), selected.std(), len(selected)
+    for node in df['node'].unique():
+        local_changes = list(filter_changelog(changelog, cluster, node).sort_values(by='date')['date'])
+        local_changes = [pandas.to_datetime('2000-01-01')] + local_changes + [pandas.to_datetime('2050-01-01')]
+        intervals = list(zip(local_changes[:-1], local_changes[1:]))
+        for cpu in df['cpu'].unique():
+            for min_date, max_date in intervals:
+                mask = ((df['node'] == node) & (df['cpu'] == cpu) &
+                       (df['timestamp'] >= min_date) & (df['timestamp'] < max_date))
+                local_df = df[mask]
+                values = {
+                    'mu'    : local_df[col].expanding(nmin).mean(),
+                    'sigma' : local_df[col].expanding(nmin).std(),
+                    'nb_obs': local_df[col].expanding(nmin).count(),
+                }
+                for key, series in values.items():
+                    df.loc[mask, key] = series.shift(1)
+                    df.loc[mask, f'{key}_current'] = series
+                    df.loc[mask, f'{key}_old'] = series.shift(window)
+                previous = df[(df['node'] == node) & (df['cpu'] == cpu) &
+                              (df['timestamp'] < min_date)]
+                if len(previous) > 0 and keep > 0:
+                    assert keep < nmin
+                    previous_row = previous[previous['timestamp'] == previous['timestamp'].max()]
+                    keep_mask = mask & ((df['nb_obs'].isna()) | (df['nb_obs'] < keep))
+                    for keep_col in ['mu', 'sigma', 'nb_obs']:
+                        df.loc[keep_mask, keep_col] = float(previous_row[keep_col])
 
 
 def _mark_weird(df, confidence, naive, col):
