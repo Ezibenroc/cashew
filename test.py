@@ -5,7 +5,7 @@ import os
 import pandas
 import numpy
 from numpy import dtype
-from numpy.testing import assert_equal, assert_almost_equal, assert_raises
+from numpy.testing import assert_equal, assert_almost_equal, assert_raises, assert_array_equal
 from io import StringIO
 from cashew.archive_extraction import read_performance, read_database, write_database
 import cashew.non_regression_tests as nrt
@@ -147,9 +147,9 @@ class NonRegressionTest(unittest.TestCase):
         nmin=8
         keep=3
         changelog = self.get_changelog()
-        df = self.get_dataframe()
-        marked = nrt._compute_mu_sigma(df, changelog, col='my_col', nmin=nmin, keep=keep)
-        for key in df['my_id'].unique():
+        marked = self.get_dataframe()
+        nrt._compute_mu_sigma(marked, changelog, col='my_col', nmin=nmin, keep=keep)
+        for key in marked['my_id'].unique():
             tmp = marked[marked['my_id'] == key]
             avg = float(list(tmp['my_col'])[0])
             count = len(tmp)
@@ -173,16 +173,31 @@ class NonRegressionTest(unittest.TestCase):
         nmin=8
         keep=3
         changelog = self.get_changelog()
-        df = self.get_dataframe_simple(N=100)
+        marked = self.get_dataframe_simple(N=100)
         #marked=nrt.mark_weird(df, select_func=lambda x: nrt.select_after_changelog(x, changelog, nmin=nmin, keep=keep),
         #        naive=False, confidence=0.95, col="my_col")
-        marked = nrt._compute_mu_sigma(df, changelog, col='my_col', nmin=nmin, keep=keep)
+        nrt._compute_mu_sigma(marked, changelog, col='my_col', nmin=nmin, keep=keep)
         expected_mu = list(marked['my_col'].expanding(nmin).mean().shift(1))
         expected_sigma = list(marked['my_col'].expanding(nmin).std().shift(1))
         expected_nbobs = list(marked['my_col'].expanding(nmin).count().shift(1))
         assert_almost_equal(list(marked['mu']), expected_mu)
         assert_almost_equal(list(marked['sigma']), expected_sigma)
         assert_equal(list(marked['nb_obs'])[nmin:], expected_nbobs[nmin:])
+
+    def test_mark_weird(self):
+        NA = float('NaN')
+        df = pandas.DataFrame({
+            'col': [27, 27, 27, 27],
+            'mu': [NA, 27, 42, 12],
+            'sigma': [NA, 1, 1, 1],
+            'nb_obs': [0, 5, 5, 5],
+            'expected_weird': ['NA', False, 'negative', 'positive']
+        })
+        for conf in [0.9, 0.99, 0.999]:
+            for naive in [True, False]:
+                marked = df.copy()
+                nrt._mark_weird(marked, conf, naive, 'col')
+                assert_array_equal(marked['weird'], df['expected_weird'])
 
 if __name__ == "__main__":
     unittest.main()

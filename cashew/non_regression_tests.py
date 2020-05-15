@@ -194,18 +194,12 @@ def _compute_mu_sigma(df, changelog, col, nmin, keep):
         candidates = df[(df['node'] == row['node']) & (df['cpu'] == row['cpu']) & (df['timestamp'] <= row['timestamp'])]
         selected = select_after_changelog(candidates, changelog, nmin=nmin, keep=keep)[col]
         df.loc[df.index[i], ('mu', 'sigma', 'nb_obs')] = selected.mean(), selected.std(), len(selected)
-    return df
 
 
-def mark_weird(df, changelog, confidence=0.95, naive=False, col='avg_gflops', nmin=8, keep=3):
+def _mark_weird(df, confidence, naive, col):
     '''
-    Mark the points of the given columns that are out of the prediction region of given confidence.
-    The confidence should be a number between 0 and 1 (e.g. 0.95 for 95% confidence).
-    If naive is True, then it assumes that the sample variane is exactly equal to the true variance, which results in a
-    tighter prediction region.
+    Assume that the function _compute_mu_sigma has been called previously.
     '''
-    df = df.copy()
-    _compute_mu_sigma(df, changelog, col=col, nmin=nmin, keep=keep)
     df['standard_score'] = (df[col] - df['mu'])/df['sigma']
     if naive:
         one_side_conf = 1-(1-confidence)/2
@@ -228,6 +222,19 @@ def mark_weird(df, changelog, confidence=0.95, naive=False, col='avg_gflops', nm
     df.loc[df['weird_pos'] == True, 'weird'] = 'positive'
     df.loc[df['weird_neg'] == True, 'weird'] = 'negative'
     df.loc[df['mu'].isna(), 'weird'] = 'NA'
+    return df
+
+
+def mark_weird(df, changelog, confidence=0.95, naive=False, col='avg_gflops', nmin=8, keep=3):
+    '''
+    Mark the points of the given columns that are out of the prediction region of given confidence.
+    The confidence should be a number between 0 and 1 (e.g. 0.95 for 95% confidence).
+    If naive is True, then it assumes that the sample variane is exactly equal to the true variance, which results in a
+    tighter prediction region.
+    '''
+    df = df.copy()
+    _compute_mu_sigma(df, changelog, col=col, nmin=nmin, keep=keep)
+    _mark_weird(df, confidence=confidence, naive=naive, col=col)
     return df
 
 
