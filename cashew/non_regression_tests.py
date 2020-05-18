@@ -186,12 +186,17 @@ def _mark_weird(df, confidence, naive, window, col):
     if naive:
         one_side_conf = 1-(1-confidence)/2
         factor = stats.norm.ppf(one_side_conf)
-        df['likelihood'] = stats.norm.pdf(df['standard_score'])
+        df['likelihood'] = 1-stats.norm.cdf(df['standard_score'].abs())
     else:
         base_factor = stats.f.ppf(confidence, 1, df['nb_obs']-1)
         factor = (base_factor*(df['nb_obs']+1)/df['nb_obs'])**(1/2)
         factor_windowed = (base_factor*(df['nb_obs']+window)/(df['nb_obs']*window))**(1/2)
-        df['likelihood'] = stats.f.pdf(df['standard_score']**2, 1, df['nb_obs']-1)
+        df['likelihood'] = 1-stats.f.cdf(df['standard_score']**2, 1, df['nb_obs']-1)
+        score          = df['standard_score']**2 * (df['nb_obs'])/(df['nb_obs']+1)
+        score_windowed = ((df['rolling_avg']-df['mu_old'])/df['sigma_old'])**2 * (df['nb_obs']*window)/(df['nb_obs']+window)
+        df['likelihood'] = 1-stats.f.cdf(score, 1, df['nb_obs']-1)
+        df['windowed_likelihood'] = 1-stats.f.cdf(score_windowed, 1, df['nb_obs']-1)
+        df['windowed_log_likelihood'] = numpy.log(df['windowed_likelihood'])
     df['log_likelihood'] = numpy.log(df['likelihood'])
     # weirdness of 0 if positive log-likelihood, else sign(x-mu)*abs(log-likelihood)
     df['weirdness'] = df['log_likelihood']
@@ -207,6 +212,9 @@ def _mark_weird(df, confidence, naive, window, col):
     df.loc[df['mu'].isna(), 'weird'] = 'NA'
     # Then, the same thing but windowed
     if not naive:  # no factor_windowed otherwise
+        df['windowed_weirdness'] = df['windowed_log_likelihood']
+        df.loc[df['windowed_log_likelihood'] >= 0, 'windowed_weirdness'] = 0
+        df.loc[df['windowed_log_likelihood'] < 0, 'windowed_weirdness'] = numpy.sign(df['rolling_avg']-df['mu_old'])*abs(df['windowed_log_likelihood'])
         df['windowed_low_bound']  = df['mu_old'] - df['sigma_old']*factor_windowed
         df['windowed_high_bound'] = df['mu_old'] + df['sigma_old']*factor_windowed
         df['windowed_weird_pos'] = df['rolling_avg'] - df['mu_old'] > factor_windowed*df['sigma_old']
@@ -293,7 +301,9 @@ def plot_evolution_cluster_windowed(df, changelog=None):
             weird_col='windowed_weird', changelog=changelog)
 
 
-def _generic_overview(df, changelog, col, grey_after_reset=True):
+def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):
+    print(weird_col, grey_after_reset)
+    print(df[weird_col].unique())
     cluster = select_unique(df, 'cluster')
     df = df.copy()
     df['node_cpu'] = df['node'].astype(str) + ':' + df['cpu'].astype(str)
@@ -306,9 +316,9 @@ def _generic_overview(df, changelog, col, grey_after_reset=True):
     points_args = {'stroke': 0, 'size': 3}
     plot = ggplot() +\
         aes(x='timestamp', y='node_cpu', fill=col) +\
-        geom_point(df[df.weird == 'NA'], **{**points_args, **({'fill': '#AAAAAA'} if grey_after_reset else {})}) +\
-        geom_point(df[df.weird == False], **points_args) +\
-        geom_point(df[~df.weird.isin({'NA', False})], **points_args) +\
+        geom_point(df[df[weird_col] == 'NA'], **{**points_args, **({'fill': '#AAAAAA'} if grey_after_reset else {})}) +\
+        geom_point(df[df[weird_col] == False], **points_args) +\
+        geom_point(df[~df[weird_col].isin({'NA', False})], **points_args) +\
         geom_vline(global_changes, aes(xintercept='date', color='type'), size=1) +\
         geom_segment(local_changes, aes(x='date', xend='date', y='ymin', yend='ymax', color='type'),
                     position=position_nudge(y=0.5), size=1) +\
@@ -323,19 +333,33 @@ def _generic_overview(df, changelog, col, grey_after_reset=True):
     return plot
 
 
-def plot_overview(df, changelog, confidence=0.95):
-    weirdness_limit = abs(numpy.log(stats.f.pdf(stats.f.ppf(confidence, 1, 20), 1, 20)))
+def _generic_overview_weirdness(df, changelog, confidence, weirdness_col, weird_col):
+    weirdness_limit = abs(numpy.log(1-stats.f.cdf(stats.f.ppf(confidence, 1, 20), 1, 20)))
     print(f'Cutting the log-likelihood at {weirdness_limit:.2f} (due to the {confidence*100}% confidence)')
-    df['bounded_weirdness'] = df['weirdness']
-    df.loc[df['weirdness'] > weirdness_limit, 'bounded_weirdness'] = weirdness_limit
-    df.loc[df['weirdness'] < -weirdness_limit, 'bounded_weirdness'] = -weirdness_limit
-    plot = _generic_overview(df, changelog, 'bounded_weirdness') +\
+    df['bounded_weirdness'] = df[weirdness_col]
+    df.loc[df[weirdness_col] > weirdness_limit, 'bounded_weirdness'] = weirdness_limit
+    df.loc[df[weirdness_col] < -weirdness_limit, 'bounded_weirdness'] = -weirdness_limit
+    plot = _generic_overview(df, changelog, 'bounded_weirdness', weird_col) +\
         scale_fill_gradient2(low='#0000FF', mid='#00FF00', high='#FF0000', limits=[-weirdness_limit, weirdness_limit]) +\
         labs(fill='Anomaly')
     return plot
 
 
-def plot_overview_raw_data(df, changelog, col):
-    plot = _generic_overview(df, changelog, col, grey_after_reset=False) +\
-        scale_fill_gradient2(low='#800080', mid='#EEEEEE', high='#FFA500', midpoint=df[col].mean())
+def plot_overview(df, changelog, confidence=0.95):
+    return _generic_overview_weirdness(df, changelog, confidence, 'weirdness', 'weird')
+
+
+def plot_overview_windowed(df, changelog, confidence=0.95):
+    return _generic_overview_weirdness(df, changelog, confidence, 'windowed_weirdness', 'windowed_weird')
+
+
+def plot_overview_raw_data(df, changelog):
+    plot = _generic_overview(df, changelog, df.interest_col, 'weird', grey_after_reset=False) +\
+        scale_fill_gradient2(low='#800080', mid='#EEEEEE', high='#FFA500', midpoint=df[df.interest_col].mean())
+    return plot
+
+
+def plot_overview_raw_data_windowed(df, changelog):
+    plot = _generic_overview(df.dropna(subset=['rolling_avg']), changelog, 'rolling_avg', 'windowed_weird', grey_after_reset=False) +\
+        scale_fill_gradient2(low='#800080', mid='#EEEEEE', high='#FFA500', midpoint=df['rolling_avg'].mean())
     return plot

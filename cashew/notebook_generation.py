@@ -75,7 +75,9 @@ notebook_str = r'''
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "# Testing performance non-regression on Grid'5000 clusters"
+    "# Testing performance non-regression on Grid'5000 clusters\n",
+    "\n",
+    "Regular measures are made on the 363 nodes of 8 Grid'5000 clusters to keep track of their evolution. Three main metrics are collected: the average CPU performance (in Gflop/s), the average CPU frequency (in GHz) and the average CPU temperature (in °C)."
    ]
   },
   {
@@ -196,8 +198,40 @@ notebook_str = r'''
     "height = max(6, nb_unique/8)\n",
     "old_sizes = tuple(plotnine.options.figure_size)\n",
     "plotnine.options.figure_size = (10, height)\n",
-    "print(nrt.plot_overview_raw_data(marked, changelog, factor))\n",
+    "print(nrt.plot_overview_raw_data(marked, changelog))\n",
     "plotnine.options.figure_size = old_sizes"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Anomalies\n",
+    "\n",
+    "The goal of the following cells is to detect the eventual anomalies for the considered metric (performance, frequency or temperature).\n",
+    "\n",
+    "Suppose that we have made 20 different experiments with a given CPU on a given node and measured its average temperature each time. We therefore have a list of 20 values. We can now compute:\n",
+    "- $\\mu$ the sample mean of the 20 measures\n",
+    "- $\\sigma$ the sample standard deviation of the 20 measures\n",
+    "\n",
+    "For instance, we may have $\\mu \\approx 64.7°C$ and $\\sigma \\approx 3.2°C$.\n",
+    "\n",
+    "Now, suppose that we perform a new experiment. This time, this CPU has an average temperature of $70°C$. This new temperature measure is higher than the mean of the 20 previous ones, but was it *significantly* too high? What was the probability of having a temperature at least as high if nothing changed on the CPU?\n",
+    "\n",
+    "In the evolution plots, we show the observed values with a prediction region $\\mu \\pm \\alpha\\times\\sigma$, where the factor $\\alpha$ is defined for a given confidence. With a conficence of 99.99%, if nothing has changed on the CPU, then 99.99% of the measures will fall in the prediction region. In other words, if a measure fall *outside* of this region, then there is probably something unusual that happened on this CPU at this time. The factor $\\alpha$ is computed using the [quantile function](https://en.wikipedia.org/wiki/Quantile_function) of either the [normal distribution](https://en.wikipedia.org/wiki/Normal_distribution) or the [F distribution](https://en.wikipedia.org/wiki/F-distribution).\n",
+    "\n",
+    "Back to our example, if we use the normal distribution, with a 99.99% confidence $\\alpha \\approx 3.89$ and the associated prediction region is $[52.3°C, 77.1°C]$. Our latest observation of $70°C$ falls in this region, so we consider that there is nothing unusual here.\n",
+    "\n",
+    "In the overview plots, the question is the other way around. We estimate what was the probability to observe a value as high (or as low) given the prior knowledge we had ($\\mu$ and $\\sigma$). First, we compute this probability (also called *likelihood*) using the [cumulative distribution function](https://en.wikipedia.org/wiki/Cumulative_distribution_function) of either the normal distribution or the F distribution. This probability can be very low, so for an easier visualization we take its logarithm. This new value, called *log-likelihood*, is always negative. For a better visualization, we then give it a sign (positive if the new observation is higher than the mean, negative otherwise). We also bound it to reasonable values to not distort too much the color scale.\n",
+    "\n",
+    "Back to our example, if we use the normal distribution, the probability to observe a value at least as high as $70°C$ was $L \\approx 0.049$. The log-likelihood is thus $LL \\approx -3.02$. Finally, the new observation was higher than the mean, so we give it a positive sign: the final value is $3.02$."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Brutal anomalies"
    ]
   },
   {
@@ -223,12 +257,33 @@ notebook_str = r'''
    ]
   },
   {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Long-term anomalies (window of 5 jobs)"
+   ]
+  },
+  {
    "cell_type": "code",
    "execution_count": null,
    "metadata": {},
    "outputs": [],
    "source": [
     "%%time\n",
+    "plotnine.options.figure_size = (10, height)\n",
+    "print(nrt.plot_overview_windowed(marked, changelog, confidence=confidence))\n",
+    "plotnine.options.figure_size = old_sizes"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%%time\n",
+    "import warnings\n",
+    "warnings.filterwarnings(\"ignore\")\n",
     "nrt.plot_evolution_cluster_windowed(marked, changelog=changelog)"
    ]
   }
