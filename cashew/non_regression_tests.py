@@ -302,8 +302,6 @@ def plot_evolution_cluster_windowed(df, changelog=None):
 
 
 def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):
-    print(weird_col, grey_after_reset)
-    print(df[weird_col].unique())
     cluster = select_unique(df, 'cluster')
     df = df.copy()
     df['node_cpu'] = df['node'].astype(str) + ':' + df['cpu'].astype(str)
