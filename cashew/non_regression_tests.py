@@ -316,7 +316,7 @@ def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):
     points_args = {'stroke': 0, 'size': 3}
     plot = ggplot() +\
         aes(x='timestamp', y='node_cpu') +\
-        geom_point(df[df[weird_col] == 'NA'], **{**points_args, **({'fill': '#AAAAAA'} if grey_after_reset else {})}) +\
+        geom_point(df[df[weird_col] == 'NA'], *[aes(fill=col) if not grey_after_reset else None],  **{**points_args, **({'fill': '#AAAAAA'} if grey_after_reset else {})}) +\
         geom_point(df[df[weird_col] == False], aes(fill=col), **points_args) +\
         geom_point(df[~df[weird_col].isin({'NA', False})], aes(fill=col), **points_args) +\
         geom_vline(global_changes, aes(xintercept='date', color='type'), size=1) +\
@@ -333,24 +333,91 @@ def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):
     return plot
 
 
-def _generic_overview_weirdness(df, changelog, confidence, weirdness_col, weird_col):
-    weirdness_limit = abs(numpy.log(1-stats.f.cdf(stats.f.ppf(confidence, 1, 20), 1, 20)))
-    print(f'Cutting the log-likelihood at {weirdness_limit:.2f} (due to the {confidence*100}% confidence)')
-    df['bounded_weirdness'] = df[weirdness_col]
-    df.loc[df[weirdness_col] > weirdness_limit, 'bounded_weirdness'] = weirdness_limit
-    df.loc[df[weirdness_col] < -weirdness_limit, 'bounded_weirdness'] = -weirdness_limit
-    plot = _generic_overview(df, changelog, 'bounded_weirdness', weird_col) +\
-        scale_fill_gradient2(low='#0000FF', mid='#00FF00', high='#FF0000', limits=[-weirdness_limit, weirdness_limit]) +\
-        labs(fill='Anomaly')
+class Color:
+    '''
+    The code from this class comes mainly from https://bsou.io/posts/color-gradients-with-python
+    '''
+    @staticmethod
+    def hex_to_RGB(hex):
+        ''' "#FFFFFF" -> [255,255,255] '''
+        return [int(hex[i:i+2], 16) for i in range(1,6,2)]
+
+    @staticmethod
+    def RGB_to_hex(RGB):
+        ''' [255,255,255] -> "#FFFFFF" '''
+        # Components need to be integers for hex to make sense
+        RGB = [int(x) for x in RGB]
+        return "#"+"".join(["0{0:x}".format(v) if v < 16 else
+                  "{0:x}".format(v) for v in RGB])
+
+    @classmethod
+    def linear_gradient(cls, start_hex, finish_hex="#FFFFFF", n=10):
+        ''' returns a gradient list of (n) colors between
+          two hex colors. start_hex and finish_hex
+          should be the full six-digit color string,
+          inlcuding the number sign ("#FFFFFF") '''
+        # Starting and ending colors in RGB form
+        s = cls.hex_to_RGB(start_hex)
+        f = cls.hex_to_RGB(finish_hex)
+        # Initilize a list of the output colors with the starting color
+        RGB_list = [s]
+        # Calcuate a color at each evenly spaced value of t from 1 to n
+        for t in range(1, n):
+            # Interpolate RGB vector for color at the current value of t
+            curr_vector = [
+              int(s[j] + (float(t)/(n-1))*(f[j]-s[j]))
+              for j in range(3)
+            ]
+            # Add it to our list of output colors
+            RGB_list.append(curr_vector)
+        return [cls.RGB_to_hex(rgb) for rgb in RGB_list]
+
+
+def _generic_overview_weirdness(df, changelog, confidence, weirdness_col, weird_col, likelihood_col, discretize):
+    def round_to_1(x):
+        return round(x, -int(numpy.floor(numpy.log10(abs(x)))))
+    df = df.copy()
+    if discretize:
+        base_prob = 1-confidence
+        probabilities = [0] + [round_to_1(base_prob*i) for i in [1, 10, 100, 1000]] + [1]
+        probabilities = [p for p in probabilities if 0 <= p <= 1]
+        prob_intervals = list(zip(probabilities[:-1], probabilities[1:]))
+        prob_intervals = [(min_p, max_p) for (min_p, max_p) in prob_intervals if min_p != max_p]
+        prob_str = [f'{min_p*100}% - {max_p*100}%' for min_p, max_p in prob_intervals]
+        df['probability_str'] = prob_str[-1]
+        for (min_p, max_p), proba_str in zip(prob_intervals[:-1], prob_str[:-1]):
+            df.loc[(df[weirdness_col] > 0) & (df[likelihood_col] >= min_p) & (df[likelihood_col] < max_p),
+                    'probability_str'] = f'[+] {proba_str}'
+            df.loc[(df[weirdness_col] < 0) & (df[likelihood_col] >= min_p) & (df[likelihood_col] < max_p),
+                    'probability_str'] = f'[-] {proba_str}'
+        final_prob_str =  [f'[+] {p}' for p in prob_str[:-1]]
+        final_prob_str += [prob_str[-1]]
+        final_prob_str += [f'[-] {p}' for p in reversed(prob_str[:-1])]
+        df['probability_str'] = pandas.Categorical(df['probability_str'], categories=final_prob_str, ordered=True)
+        colors =  Color.linear_gradient('#FF0000', '#00FF00', n=len(prob_str))
+        colors += Color.linear_gradient('#00FF00', '#0000FF', n=len(prob_str))[1:]
+        plot = _generic_overview(df, changelog, 'probability_str', weird_col) +\
+            scale_fill_manual(values = colors) +\
+            labs(fill='Probability')
+    else:
+        weirdness_limit = abs(numpy.log(1-stats.f.cdf(stats.f.ppf(confidence, 1, 20), 1, 20)))
+        print(f'Cutting the log-likelihood at {weirdness_limit:.2f} (due to the {confidence*100}% confidence)')
+        df['bounded_weirdness'] = df[weirdness_col]
+        df.loc[df[weirdness_col] > weirdness_limit, 'bounded_weirdness'] = weirdness_limit
+        df.loc[df[weirdness_col] < -weirdness_limit, 'bounded_weirdness'] = -weirdness_limit
+        plot = _generic_overview(df, changelog, 'bounded_weirdness', weird_col) +\
+            scale_fill_gradient2(low='#0000FF', mid='#00FF00', high='#FF0000', limits=[-weirdness_limit, weirdness_limit]) +\
+            labs(fill='Anomaly')
     return plot
 
 
-def plot_overview(df, changelog, confidence=0.95):
-    return _generic_overview_weirdness(df, changelog, confidence, 'weirdness', 'weird')
+def plot_overview(df, changelog, confidence=0.95, discretize=False):
+    return _generic_overview_weirdness(df, changelog, confidence, 'weirdness', 'weird', 'likelihood', discretize)
 
 
-def plot_overview_windowed(df, changelog, confidence=0.95):
-    return _generic_overview_weirdness(df, changelog, confidence, 'windowed_weirdness', 'windowed_weird')
+def plot_overview_windowed(df, changelog, confidence=0.95, discretize=False):
+    return _generic_overview_weirdness(df, changelog, confidence, 'windowed_weirdness', 'windowed_weird',
+    'windowed_likelihood', discretize)
 
 
 def plot_overview_raw_data(df, changelog):

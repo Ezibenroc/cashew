@@ -242,7 +242,7 @@ notebook_str = r'''
    "source": [
     "%%time\n",
     "plotnine.options.figure_size = (10, height)\n",
-    "print(nrt.plot_overview(marked, changelog, confidence=confidence))\n",
+    "print(nrt.plot_overview(marked, changelog, confidence=confidence, discretize=True))\n",
     "plotnine.options.figure_size = old_sizes"
    ]
   },
@@ -271,7 +271,7 @@ notebook_str = r'''
    "source": [
     "%%time\n",
     "plotnine.options.figure_size = (10, height)\n",
-    "print(nrt.plot_overview_windowed(marked, changelog, confidence=confidence))\n",
+    "print(nrt.plot_overview_windowed(marked, changelog, confidence=confidence, discretize=True))\n",
     "plotnine.options.figure_size = old_sizes"
    ]
   },
