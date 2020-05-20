@@ -143,6 +143,8 @@ def _compute_mu_sigma(df, changelog, col, nmin, keep, window):
     ones from the measure made just before this change.
     If more than `keep` but less than `nmin` measures have been made since the last change, then the summary values are
     not defined (NaN).
+
+    **ASSUMPTION**: for a given node and a given CPU, the measures are sorted in increasing timestamp.
     '''
     cluster = select_unique(df, 'cluster')
     for node in df['node'].unique():
@@ -150,9 +152,15 @@ def _compute_mu_sigma(df, changelog, col, nmin, keep, window):
         local_changes = [pandas.to_datetime('2000-01-01')] + local_changes + [pandas.to_datetime('2050-01-01')]
         intervals = list(zip(local_changes[:-1], local_changes[1:]))
         for cpu in df['cpu'].unique():
-            for min_date, max_date in intervals:
-                mask = ((df['node'] == node) & (df['cpu'] == cpu) &
+            cpu_mask = (df['node'] == node) & (df['cpu'] == cpu)
+            assert df[cpu_mask]['timestamp'].is_monotonic_increasing
+            for min_date, max_date in reversed(intervals):
+                mask = (cpu_mask &
                        (df['timestamp'] >= min_date) & (df['timestamp'] < max_date))
+                if keep > 0:
+                    next_measures = (cpu_mask & (df['timestamp'] >= max_date))
+                    next_measures = next_measures[next_measures].head(n=keep).index
+                    mask.iloc[next_measures] = True
                 local_df = df[mask]
                 df.loc[mask, 'rolling_avg'] = local_df[col].rolling(window=window).mean()
                 values = {
@@ -165,18 +173,6 @@ def _compute_mu_sigma(df, changelog, col, nmin, keep, window):
                     df.loc[mask, key] = series.shift(1)
                     df.loc[mask, f'{key}_current'] = series
                     df.loc[mask, f'{key}_old'] = series.shift(window)
-                previous = df[(df['node'] == node) & (df['cpu'] == cpu) &
-                              (df['timestamp'] < min_date)]
-                if len(previous) > 0 and keep > 0:
-                    assert keep < nmin
-                    previous_window = previous.sort_values(by='timestamp').tail(n=window)
-                    previous_row = previous_window.tail(n=1)
-                    keep_mask = mask & (df['__nb___current'] <= keep)
-                    for keep_col in ['mu', 'sigma', 'nb_obs', 'mu_old', 'sigma_old', 'nb_obs_old']:
-                        df.loc[keep_mask, keep_col] = float(previous_row[keep_col])
-                    tmp_df = pandas.concat([previous_window, df[keep_mask]])
-                    avg = tmp_df[col].rolling(window=window).mean().tail(n=min(keep, len(df[keep_mask])))
-                    df.loc[keep_mask, 'rolling_avg'] = avg
                 df.drop(['__nb__', '__nb___old', '__nb___current'], axis=1, inplace=True)
 
 
@@ -235,7 +231,7 @@ def mark_weird(df, changelog, confidence=0.95, naive=False, col='avg_gflops', nm
     If naive is True, then it assumes that the sample variane is exactly equal to the true variance, which results in a
     tighter prediction region.
     '''
-    df = df.copy()
+    df = df.reset_index(drop=True).copy()
     _compute_mu_sigma(df, changelog, col=col, nmin=nmin, keep=keep, window=window)
     _mark_weird(df, confidence=confidence, naive=naive, col=col, window=window)
     df.window_size = window
