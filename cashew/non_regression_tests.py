@@ -315,10 +315,10 @@ def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):
     local_changes[col] = 42  # not used, but otherwise plotnine complains...
     points_args = {'stroke': 0, 'size': 3}
     plot = ggplot() +\
-        aes(x='timestamp', y='node_cpu', fill=col) +\
+        aes(x='timestamp', y='node_cpu') +\
         geom_point(df[df[weird_col] == 'NA'], **{**points_args, **({'fill': '#AAAAAA'} if grey_after_reset else {})}) +\
-        geom_point(df[df[weird_col] == False], **points_args) +\
-        geom_point(df[~df[weird_col].isin({'NA', False})], **points_args) +\
+        geom_point(df[df[weird_col] == False], aes(fill=col), **points_args) +\
+        geom_point(df[~df[weird_col].isin({'NA', False})], aes(fill=col), **points_args) +\
         geom_vline(global_changes, aes(xintercept='date', color='type'), size=1) +\
         geom_segment(local_changes, aes(x='date', xend='date', y='ymin', yend='ymax', color='type'),
                     position=position_nudge(y=0.5), size=1) +\
