@@ -204,7 +204,7 @@ def _mark_weird(df, confidence, naive, window, col):
     df['high_bound'] = df['mu'] + df['sigma']*factor
     df['weird_pos'] = df[col] - df['mu'] > factor*df['sigma']
     df['weird_neg'] = df[col] - df['mu'] < -factor*df['sigma']
-    df['weird'] = df['weird_pos'] | df['weird_neg']
+    df['weird'] = (df['weird_pos'] | df['weird_neg']).astype(str)
     df.loc[df['weird_pos'] == True, 'weird'] = 'positive'
     df.loc[df['weird_neg'] == True, 'weird'] = 'negative'
     df.loc[df['mu'].isna(), 'weird'] = 'NA'
@@ -217,7 +217,7 @@ def _mark_weird(df, confidence, naive, window, col):
         df['windowed_high_bound'] = df['mu_old'] + df['sigma_old']*factor_windowed
         df['windowed_weird_pos'] = df['rolling_avg'] - df['mu_old'] > factor_windowed*df['sigma_old']
         df['windowed_weird_neg'] = df['rolling_avg'] - df['mu_old'] < -factor_windowed*df['sigma_old']
-        df['windowed_weird'] = df['windowed_weird_pos'] | df['windowed_weird_neg']
+        df['windowed_weird'] = (df['windowed_weird_pos'] | df['windowed_weird_neg']).astype(str)
         df.loc[df['windowed_weird_pos'] == True, 'windowed_weird'] = 'positive'
         df.loc[df['windowed_weird_neg'] == True, 'windowed_weird'] = 'negative'
         df.loc[df['mu_old'].isna(), 'windowed_weird'] = 'NA'
@@ -259,7 +259,7 @@ def plot_evolution_node(df, col, low_col, high_col, weird_col):
                 'NA': '#AAAAAA',
                 'positive': '#FF0000',
                 'negative': '#0000FF',
-                False: '#00FF00'}) +\
+                'False': '#00FF00'}) +\
             theme_bw() +\
             geom_ribbon(aes(ymin=low_col, ymax=high_col), color='grey', alpha=0.2) +\
             facet_wrap('cpu', labeller='label_both') +\
