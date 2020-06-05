@@ -197,7 +197,7 @@ class NonRegressionTest(unittest.TestCase):
             'mu': [NA, 27, 42, 12],
             'sigma': [NA, 1, 1, 1],
             'nb_obs': [0, 5, 5, 5],
-            'expected_weird': ['NA', False, 'negative', 'positive'],
+            'expected_weird': ['NA', 'False', 'negative', 'positive'],
             'mu_old': [NA, 27, 42, 12],
             'sigma_old': [NA, 1, 1, 1],
             'rolling_avg': [27, 27, 27, 27],

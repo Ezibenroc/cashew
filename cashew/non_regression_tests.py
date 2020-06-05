@@ -285,8 +285,8 @@ def _generic_plot_evolution(df, col, low_col, high_col, weird_col, changelog=Non
                 'G5K': '#DD9500'},
                 guide=False)
             log.loc[log['type'] == 'protocol', 'description'] = 'protocol'
-            plot += geom_label(log[log['type'] == 'G5K'], aes(label='description', x='date', color='type'), y=max_f, size=8)
-            plot += geom_label(log[log['type'] != 'G5K'], aes(label='description', x='date', color='type'), y=min_f, size=8)
+            plot += geom_label(data=log[log['type'] == 'G5K'], mapping=aes(label='description', x='date', color='type'), y=max_f, size=8)
+            plot += geom_label(data=log[log['type'] != 'G5K'], mapping=aes(label='description', x='date', color='type'), y=min_f, size=8)
         print(plot)
 
 
@@ -313,11 +313,9 @@ def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):
     plot = ggplot() +\
         aes(x='timestamp', y='node_cpu') +\
         geom_point(df[df[weird_col] == 'NA'], *[aes(fill=col) if not grey_after_reset else None],  **{**points_args, **({'fill': '#AAAAAA'} if grey_after_reset else {})}) +\
-        geom_point(df[df[weird_col] == False], aes(fill=col), **points_args) +\
-        geom_point(df[~df[weird_col].isin({'NA', False})], aes(fill=col), **points_args) +\
+        geom_point(df[df[weird_col] == 'False'], aes(fill=col), **points_args) +\
+        geom_point(df[~df[weird_col].isin({'NA', 'False'})], aes(fill=col), **points_args) +\
         geom_vline(global_changes, aes(xintercept='date', color='type'), size=1) +\
-        geom_segment(local_changes, aes(x='date', xend='date', y='ymin', yend='ymax', color='type'),
-                    position=position_nudge(y=0.5), size=1) +\
         scale_color_manual({
             'protocol': '#888888',
             'G5K': '#DD9500'},
@@ -326,6 +324,9 @@ def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):
         scale_x_datetime(breaks=date_breaks(get_date_breaks(df))) +\
         ylab('Node:CPU') +\
         ggtitle(f'Overview of the cluster {cluster}')
+    if len(local_changes) > 0:
+        plot += geom_segment(local_changes, aes(x='date', xend='date', y='ymin', yend='ymax', color='type'),
+                    position=position_nudge(y=0.5), size=1)
     return plot
 
 
