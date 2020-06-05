@@ -57,6 +57,7 @@ def main_stats(args):
 
 def main_notebook(args):
     possible_clusters = [
+            'chetemi',
             'dahu',
             'yeti',
             'troll',
