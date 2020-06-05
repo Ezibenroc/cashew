@@ -314,8 +314,6 @@ def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):
         aes(x='timestamp', y='node_cpu') +\
         geom_point(df[df[weird_col] == 'NA'], *[aes(fill=col) if not grey_after_reset else None],  **{**points_args, **({'fill': '#AAAAAA'} if grey_after_reset else {})}) +\
         geom_point(df[df[weird_col] == 'False'], aes(fill=col), **points_args) +\
-        geom_point(df[~df[weird_col].isin({'NA', 'False'})], aes(fill=col), **points_args) +\
-        geom_vline(global_changes, aes(xintercept='date', color='type'), size=1) +\
         scale_color_manual({
             'protocol': '#888888',
             'G5K': '#DD9500'},
@@ -327,6 +325,11 @@ def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):
     if len(local_changes) > 0:
         plot += geom_segment(local_changes, aes(x='date', xend='date', y='ymin', yend='ymax', color='type'),
                     position=position_nudge(y=0.5), size=1)
+    if len(global_changes) > 0:
+        plot += geom_vline(global_changes, aes(xintercept='date', color='type'), size=1)
+    weird_points = df[~df[weird_col].isin({'NA', 'False'})]
+    if len(weird_points) > 0:
+        plot += geom_point(weird_points, aes(fill=col), **points_args)
     return plot
 
 
