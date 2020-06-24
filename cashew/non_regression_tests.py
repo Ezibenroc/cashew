@@ -123,13 +123,25 @@ def plot_latest_distribution(df, col='avg_gflops'):
     max_f = df[col].max()
     cluster = select_unique(df, 'cluster')
     df = filter_latest(df)
-    median = df[col].median()
-    title = f'Distribution of the latest runs made on the cluster {cluster}\nMedian of {median:.2f}'
+    mean = df[col].mean()
+    spatial_var = df[col].std() / df[col].mean() * 100
+    unit = {
+        'avg_gflops': 'Gflop/s',
+        'mean_temperature': '°C',
+        'mean_frequency': 'GHz'
+    }.get(col, '')
+    stat = f'Mean of {mean:.2f}{unit} | Spatial variability of {spatial_var:.2f}%'
+    try:
+        temporal_var = (df['mnk_residual'] / df['mnk']).mean()*100
+        stat += f' | Temporal variability of {temporal_var:.2f}%'
+    except KeyError:
+        pass
+    title = f'Distribution of the latest runs made on the cluster {cluster}\n{stat}'
     return ggplot(df) +\
             aes(x=col) +\
             geom_histogram(binwidth=(max_f-min_f)/10, alpha=0.5) +\
             theme_bw() +\
-            geom_vline(xintercept=median) +\
+            geom_vline(xintercept=mean) +\
             expand_limits(x=(min_f, max_f)) +\
             ylab('Number of CPU') +\
             ggtitle(title)
