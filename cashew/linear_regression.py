@@ -18,8 +18,8 @@ def powerset(iterable):
 
 
 def compute_intercept(df, x, y):
-    # taking the calls smallet than 100 times the smallest one
-    short_calls = df[df[x] <= df[x].min() * 100]
+    # taking the calls smallet than 3 times the smallest one
+    short_calls = df[df[x] <= df[x].min() * 3]
     # removing the 5% longest calls, we have very large outliers (without this, the intercept is 3 times larger)
     short_calls = short_calls[short_calls[y] < short_calls[y].quantile(0.95)]
     return short_calls[y].mean()
