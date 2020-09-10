@@ -25,7 +25,7 @@ async def run_notebook(src_notebook, dst_dir, cluster, parameter):
 async def convert_notebook(filename):
     assert filename.endswith('.ipynb')
     dstname = filename[:-len('.ipynb')] + '.html'
-    await run(f'jupyter nbconvert {filename} --output {dstname}')
+    await run(f'jupyter nbconvert {filename} --to html --output {dstname}')
     return dstname
 
 
