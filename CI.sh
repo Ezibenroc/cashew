@@ -1,5 +1,6 @@
 TOKEN_PATH="GITLAB_TOKEN"
 REPO_URL="https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression.git"
+SSH_URL="git@gitlab.in2p3.fr:cornebize/g5k_data_non_regression.git"
 
 token=$(cat $TOKEN_PATH)
 if [ $? -ne 0 ] ; then
@@ -11,7 +12,7 @@ echo "###  PROCESSING"
 cd /tmp
 base_url=$(echo $REPO_URL | awk -F '//' '{ printf $2; }')
 remote_url="https://oauth2:$token@$base_url"
-git clone $REPO_URL repository --depth 1
+git clone $SSH_URL repository --depth 1
 cd repository
 git remote set-branches origin '*'  # https://stackoverflow.com/a/27393574
 git fetch -v
@@ -22,6 +23,6 @@ process_archive || exit 1
 # If we do 'git lfs push --all', then the command does not terminate (it seems).
 # But, if start by 'git lfs push --all' in the background and wait a bit, then 'git push' works fine.
 # So, this is what the following does. It is ugly, but I am simply too lazy to fill in a bug report.
-git lfs push --all $remote_url
-git push $remote_url || exit 1
-for branch in $(cat processed_branches) ; do git push $remote_url --delete $branch ; done
+git lfs push --all $SSH_URL
+git push $SSH_URL || exit 1
+for branch in $(cat processed_branches) ; do git push $SSH_URL --delete $branch ; done
