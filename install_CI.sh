@@ -7,3 +7,4 @@ sudo-g5k wget https://raw.githubusercontent.com/Ezibenroc/cashew/master/process_
 sudo-g5k chmod +x /bin/process_archive
 sudo-g5k wget https://raw.githubusercontent.com/Ezibenroc/cashew/master/CI.sh -O /CI.sh
 sudo-g5k wget https://raw.githubusercontent.com/Ezibenroc/cashew/master/CI_test.sh -O /CI_test.sh
+echo "DONE: $0"

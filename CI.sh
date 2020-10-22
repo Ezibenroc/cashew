@@ -26,3 +26,4 @@ process_archive || exit 1
 git lfs push --all $SSH_URL
 git push $SSH_URL || exit 1
 for branch in $(cat processed_branches) ; do git push $SSH_URL --delete $branch ; done
+echo "DONE: $0"
