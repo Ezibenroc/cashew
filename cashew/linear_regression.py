@@ -86,7 +86,10 @@ def compute_monitoring_stat(df, time_after_start=300, time_window=60):
     tmp = df[(df['timestamp'] > start + time_after_start) &
               (df['timestamp'] < start + time_after_start + time_window)]
     freq = tmp[tmp['kind'] == 'frequency']['value']
-    temp = tmp[tmp['kind'] == 'temperature']['value']
+    temp = tmp[tmp['kind'] == 'temperature']
+    if temp['core'].min() < 0:  # we have values for the whole CPU, let's use that instead of the per-core values
+        temp = temp[temp['core'] < 0]
+    temp = temp['value']
     return {
         'mean_frequency': freq.mean(),
         'std_frequency': freq.std(),

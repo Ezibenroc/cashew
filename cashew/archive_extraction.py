@@ -118,6 +118,7 @@ def read_monitoring(archive_name, columns=None):
     core_mapping = platform_to_cpu_mapping(get_platform(archive_name))
     columns = ['timestamp', 'cluster', 'node', 'jobid', 'start_time', 'expfile_hash']
     temperature = my_melt(df, 'temperature_core_', columns)
+    temperature_cpu = my_melt(df, 'temperature_cpu_', columns)
     frequency   = my_melt(df, 'frequency_core_', columns)
     # removing the cores with largest IDs (they are not real cores, just hyperthreads)
     frequency = frequency[frequency['group'] <= max(core_mapping.keys())]
@@ -131,6 +132,13 @@ def read_monitoring(archive_name, columns=None):
         frame['kind'] = val
     frequency['value'] *= 1e-9  # Hz → GHz
     df = pandas.concat([frequency, temperature])
+    temperature_cpu['value'] = temperature_cpu['temperature_cpu_']
+    temperature_cpu.drop('temperature_cpu_', axis=1, inplace=True)
+    temperature_cpu['cpu'] = temperature_cpu['group']
+    temperature_cpu.drop('group', axis=1, inplace=True)
+    temperature_cpu['core'] = -1
+    temperature_cpu['kind'] = 'temperature'
+    df = pandas.concat([df, temperature_cpu])
     info = read_yaml(archive_name, 'info.yaml')
     timestamps = info['timestamp']
     for step in ['start', 'stop']:
