@@ -148,6 +148,18 @@ def read_monitoring(archive_name, columns=None):
         temperature_cpu['core'] = -1
         temperature_cpu['kind'] = 'temperature'
         result = pandas.concat([result, temperature_cpu])
+    try:
+        power_cpu  = my_melt(df, 'power_package-([0-9]+)', 'value', columns)
+        power_dram = my_melt(df, 'power_package-([0-9]+)_dram', 'value', columns)
+    except ValueError:
+        logger.warning('No CPU power available')
+    else:
+        for frame, val in [(power_cpu, 'power_cpu'), (power_dram, 'power_dram')]:
+            frame['cpu'] = frame['group']
+            frame.drop('group', axis=1, inplace=True)
+            frame['core'] = -1
+            frame['kind'] = val
+            result = pandas.concat([result, frame])
     info = read_yaml(archive_name, 'info.yaml')
     timestamps = info['timestamp']
     for step in ['start', 'stop']:
