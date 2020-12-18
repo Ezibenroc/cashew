@@ -73,7 +73,7 @@ def compute_dgemm_reg(df):
     reg = compute_full_reg(df, 'duration', ['mnk', 'mn', 'mk', 'nk'])
     total_flop = (2 * df['m'] * df['n'] * df['k']).sum()
     total_time = df['duration'].sum()
-    reg['avg_gflops'] = total_flop / total_time * 1e-9
+    reg['mean_gflops'] = total_flop / total_time * 1e-9
     reg['function'] = get_unique(df, 'function')
     return reg
 
@@ -90,12 +90,22 @@ def compute_monitoring_stat(df, time_after_start=120, time_window=240):
     if temp['core'].min() < 0:  # we have values for the whole CPU, let's use that instead of the per-core values
         temp = temp[temp['core'] < 0]
     temp = temp['value']
-    return {
+    result = {
         'mean_frequency': freq.mean(),
         'std_frequency': freq.std(),
         'mean_temperature': temp.mean(),
         'std_temperature': temp.std(),
     }
+    power_cpu  = tmp[tmp['kind'] == 'power_cpu']['value']
+    power_dram = tmp[tmp['kind'] == 'power_dram']['value']
+    if len(power_cpu) > 0:
+        result.update({
+            'mean_power_cpu': power_cpu.mean(),
+            'std_power_cpu': power_cpu.std(),
+            'mean_power_dram': power_dram.mean(),
+            'std_power_dram': power_dram.std(),
+    })
+    return result
 
 
 def regression(df, reg_func):
