@@ -172,8 +172,7 @@ def update_regression(hdf_file, output_file, overlap_time=3600*12, conditions=[]
     if old_reg is not None:
         diff = set(old_reg.columns) ^ set(new_reg.columns)
         if len(diff) > 0:
-            raise WriteError('Incompatible columns, the following are in one dataframe but not the other: %s' % diff)
-        new_reg = new_reg[old_reg.columns]
+            logger.warning('Some columns were in one dataframe but not the other: %s' % diff)
         new_reg = pandas.concat([old_reg, new_reg])
         new_reg.drop_duplicates(subset=identifier, keep='first', inplace=True)
     else:
