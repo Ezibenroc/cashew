@@ -7,6 +7,7 @@ import lxml.etree
 import os
 import hashlib
 from peanut import Nodes
+from .logger import logger
 
 modes = {
     'performance': 'result.csv',
@@ -118,7 +119,6 @@ def read_monitoring(archive_name, columns=None):
     core_mapping = platform_to_cpu_mapping(get_platform(archive_name))
     columns = ['timestamp', 'cluster', 'node', 'jobid', 'start_time', 'expfile_hash']
     temperature = my_melt(df, 'temperature_core_', columns)
-    temperature_cpu = my_melt(df, 'temperature_cpu_', columns)
     frequency   = my_melt(df, 'frequency_core_', columns)
     # removing the cores with largest IDs (they are not real cores, just hyperthreads)
     frequency = frequency[frequency['group'] <= max(core_mapping.keys())]
@@ -131,20 +131,25 @@ def read_monitoring(archive_name, columns=None):
         frame.drop('group', axis=1, inplace=True)
         frame['kind'] = val
     frequency['value'] *= 1e-9  # Hz → GHz
-    df = pandas.concat([frequency, temperature])
-    temperature_cpu['value'] = temperature_cpu['temperature_cpu_']
-    temperature_cpu.drop('temperature_cpu_', axis=1, inplace=True)
-    temperature_cpu['cpu'] = temperature_cpu['group']
-    temperature_cpu.drop('group', axis=1, inplace=True)
-    temperature_cpu['core'] = -1
-    temperature_cpu['kind'] = 'temperature'
-    df = pandas.concat([df, temperature_cpu])
+    result = pandas.concat([frequency, temperature])
+    try:
+        temperature_cpu = my_melt(df, 'temperature_cpu_', columns)
+    except ValueError:
+        logger.warning('No CPU temperature available')
+    else:
+        temperature_cpu['value'] = temperature_cpu['temperature_cpu_']
+        temperature_cpu.drop('temperature_cpu_', axis=1, inplace=True)
+        temperature_cpu['cpu'] = temperature_cpu['group']
+        temperature_cpu.drop('group', axis=1, inplace=True)
+        temperature_cpu['core'] = -1
+        temperature_cpu['kind'] = 'temperature'
+        result = pandas.concat([result, temperature_cpu])
     info = read_yaml(archive_name, 'info.yaml')
     timestamps = info['timestamp']
     for step in ['start', 'stop']:
-        df[f'{step}_exp'] = pandas.to_datetime(timestamps['run_exp'][step]).timestamp()
-    df['timestamp'] = df['timestamp'].astype(numpy.int64) / 10 ** 9
-    return df
+        result[f'{step}_exp'] = pandas.to_datetime(timestamps['run_exp'][step]).timestamp()
+    result['timestamp'] = result['timestamp'].astype(numpy.int64) / 10 ** 9
+    return result
 
 
 def write_database(df, database_name, **kwargs):
