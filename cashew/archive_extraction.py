@@ -126,14 +126,12 @@ def read_monitoring(archive_name, columns=None):
     df['timestamp'] = pandas.to_datetime(df['timestamp'])
     core_mapping = platform_to_cpu_mapping(get_platform(archive_name))
     columns = ['timestamp', 'cluster', 'node', 'jobid', 'start_time', 'expfile_hash']
-    temperature = my_melt(df, 'temperature_core_([0-9]+)', 'temperature_core', columns)
-    frequency   = my_melt(df, 'frequency_core_([0-9]+)', 'frequency_core', columns)
+    temperature = my_melt(df, 'temperature_core_([0-9]+)', 'value', columns)
+    frequency   = my_melt(df, 'frequency_core_([0-9]+)', 'value', columns)
     # removing the cores with largest IDs (they are not real cores, just hyperthreads)
     frequency = frequency[frequency['group'] <= max(core_mapping.keys())]
     temperature = temperature[temperature['group'] <= max(core_mapping.keys())]
     for frame, val in [(temperature, 'temperature'), (frequency, 'frequency')]:
-        frame['value'] = frame[f'{val}_core']
-        frame.drop(f'{val}_core', axis=1, inplace=True)
         frame['cpu'] = frame.apply(lambda row: core_mapping[row.group], axis=1)
         frame['core'] = frame['group']
         frame.drop('group', axis=1, inplace=True)
@@ -141,12 +139,10 @@ def read_monitoring(archive_name, columns=None):
     frequency['value'] *= 1e-9  # Hz → GHz
     result = pandas.concat([frequency, temperature])
     try:
-        temperature_cpu = my_melt(df, 'temperature_cpu_([0-9]+)', 'temperature_cpu', columns)
+        temperature_cpu = my_melt(df, 'temperature_cpu_([0-9]+)', 'value', columns)
     except ValueError:
         logger.warning('No CPU temperature available')
     else:
-        temperature_cpu['value'] = temperature_cpu['temperature_cpu']
-        temperature_cpu.drop('temperature_cpu', axis=1, inplace=True)
         temperature_cpu['cpu'] = temperature_cpu['group']
         temperature_cpu.drop('group', axis=1, inplace=True)
         temperature_cpu['core'] = -1
