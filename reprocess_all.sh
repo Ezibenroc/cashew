@@ -10,7 +10,8 @@ cd /tmp
 git clone $old_remote repo --depth 1
 cd repo
 
-rm -rf .git
+rm -rf .git data*db stats*csv
+
 for f in data/* ; do
     echoerr "Processing file $f"
     cashew extract $f performance data.db --compression zlib --compression_lvl 9 --format table
