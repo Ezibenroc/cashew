@@ -18,10 +18,8 @@ def powerset(iterable):
 
 
 def compute_intercept(df, x, y):
-    # taking the calls smallet than 3 times the smallest one
-    short_calls = df[df[x] <= df[x].min() * 3]
-    # removing the 5% longest calls, we have very large outliers (without this, the intercept is 3 times larger)
-    short_calls = short_calls[short_calls[y] < short_calls[y].quantile(0.95)]
+    # taking the calls smaller than 100 times the smallest one
+    short_calls = df[df[x] <= df[x].min() * 100]
     return short_calls[y].mean()
 
 
@@ -70,10 +68,16 @@ def get_unique(df, key):
 def compute_dgemm_reg(df):
     df = df.copy()
     compute_variable_products(df, 'mnk')
-    reg = compute_full_reg(df, 'duration', ['mnk', 'mn', 'mk', 'nk'])
+    reg = compute_full_reg(df, 'duration', ['mnk', 'mn', 'mk', 'nk', 'm', 'n', 'k'])
     total_flop = (2 * df['m'] * df['n'] * df['k']).sum()
     total_time = df['duration'].sum()
     reg['mean_gflops'] = total_flop / total_time * 1e-9
+    df2048 = df[(df['m'] == 2048) & (df['n'] == 2048) & (df['k'] == 2048)]
+    n2048 = len(df2048)
+    if n2048 > 0:
+        total_flop = (2 * n2048 * 2048**3)
+        total_time = df2048['duration'].sum()
+        reg['mean_gflops_2048'] = total_flop / total_time * 1e-9
     reg['function'] = get_unique(df, 'function')
     return reg
 
