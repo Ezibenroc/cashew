@@ -62,6 +62,9 @@ def read_archive_csv_enhanced(archive_name, csv_name, columns=None, dropna=False
         new_len = len(df)
         if new_len < old_len:
             logger.warning(f'File {csv_name} from archive {archive_name} contained missing value, dropped {old_len-new_len} rows')
+            int_cols = ['node', 'cpu', 'core', 'm', 'n', 'k', 'index']
+            for col in set(int_cols) & set(df.columns):
+                df[col] = df[col].astype(int)
     info = read_yaml(archive_name, 'info.yaml')
     site = info['site']
     cluster = info['cluster']
