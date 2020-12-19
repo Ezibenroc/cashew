@@ -20,6 +20,11 @@ def read_archive_csv(archive_name, csv_name, columns=None):
     archive = zipfile.ZipFile(archive_name)
     df = pandas.read_csv(io.BytesIO(archive.read(csv_name)), names=columns)
     df.columns = df.columns.str.strip()
+    old_len = len(df)
+    df.dropna(inplace=True)
+    new_len = len(df)
+    if new_len < old_len:
+        logger.warning(f'File {csv_name} from archive {archive_name} contained missing value, dropped {old_len-new_len} rows')
     return df
 
 
