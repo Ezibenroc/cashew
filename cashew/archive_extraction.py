@@ -20,11 +20,6 @@ def read_archive_csv(archive_name, csv_name, columns=None):
     archive = zipfile.ZipFile(archive_name)
     df = pandas.read_csv(io.BytesIO(archive.read(csv_name)), names=columns)
     df.columns = df.columns.str.strip()
-    old_len = len(df)
-    df.dropna(inplace=True)
-    new_len = len(df)
-    if new_len < old_len:
-        logger.warning(f'File {csv_name} from archive {archive_name} contained missing value, dropped {old_len-new_len} rows')
     return df
 
 
@@ -59,8 +54,14 @@ def platform_to_cpu_mapping(platform):
     return mapping
 
 
-def read_archive_csv_enhanced(archive_name, csv_name, columns=None):
+def read_archive_csv_enhanced(archive_name, csv_name, columns=None, dropna=False):
     df = read_archive_csv(archive_name, csv_name, columns)
+    if dropna:
+        old_len = len(df)
+        df.dropna(inplace=True)
+        new_len = len(df)
+        if new_len < old_len:
+            logger.warning(f'File {csv_name} from archive {archive_name} contained missing value, dropped {old_len-new_len} rows')
     info = read_yaml(archive_name, 'info.yaml')
     site = info['site']
     cluster = info['cluster']
@@ -93,7 +94,7 @@ def read_performance(archive_name, columns=None):
     Read the durations of a BLAS calibration in an archive.
     '''
     csv_name = 'result.csv'
-    df = read_archive_csv_enhanced(archive_name, csv_name, columns=columns)
+    df = read_archive_csv_enhanced(archive_name, csv_name, columns=columns, dropna=True)
     core_mapping = platform_to_cpu_mapping(get_platform(archive_name))
     df['cpu'] = df.apply(lambda row: core_mapping[row.core], axis=1)
     df['index'] = -1
