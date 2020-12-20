@@ -28,7 +28,7 @@ for year in {2019,2020}; do
         done
         if [ $archives = true ] ; then
             cashew stats data.db stats.csv
-            cashew stats data_monitoring.db stats_monitoring.csv
+            cashew stats data_monitoring.db stats_monitoring.csv || echoerr "    Could not compute monitoring statistics"
             git add .
             git commit -m """[AUTOMATIC COMMIT] Reprocessing all the archives for ${year}-${month}"""
             git push --set-upstream origin master || git push || git push || git push
