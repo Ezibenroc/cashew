@@ -19,7 +19,7 @@ git remote add origin $new_remote
 
 for year in {2019,2020}; do
     for month in {01..12} ; do
-        for f in data/*${year}-${month}-* ; do
+        for f in $(find data -name "*${year}-${month}-*") ; do
             echoerr "Processing file $f"
             cashew extract $f performance data.db --compression zlib --compression_lvl 9 --format table
             cashew extract $f monitoring data_monitoring.db --compression zlib --compression_lvl 9 --format table || echoerr "    Failed to extract monitoring data"
