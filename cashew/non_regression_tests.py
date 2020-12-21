@@ -97,6 +97,20 @@ def filter(df, **kwargs):
     logger.info(f'Filtered the dataframe, there remains {len(df)} rows')
     return df
 
+def filter_na(df, *columns):
+    '''
+    Remove the rows where one of the given columns is NA.
+
+    Example:
+    filter(df, "mean_frequency", "mean_power_cpu")
+    '''
+    for col in columns:
+        if col not in df.columns:
+            raise ValueError(f'Cannot filter on {col}, missing column')
+        df = df[~df[col].isna()]
+    logger.info(f'Filtered the dataframe, there remains {len(df)} rows')
+    return df
+
 
 def filter_latest(df):
     '''

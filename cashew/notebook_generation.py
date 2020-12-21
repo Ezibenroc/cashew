@@ -47,8 +47,9 @@ def main(output_dir, cluster_list):
         os.makedirs(output_dir)
     clusters = list(cluster_list)
     parameters = [
-        'avg_gflops',
+        'mean_gflops',
         'mean_frequency',
+        'mean_power_cpu',
         'mean_temperature'
     ]
     src_notebook = os.path.join(output_dir, 'src.ipynb')
@@ -120,6 +121,7 @@ notebook_str = r'''
     "    'avg_gflops': 'stats.csv',\n",
     "    'mean_temperature': 'stats_monitoring.csv',\n",
     "    'mean_frequency': 'stats_monitoring.csv',\n",
+    "    'mean_power_cpu': 'stats_monitoring.csv',\n",
     "}\n",
     "csv_url = csv_url_prefix + all_files[factor]"
    ]
@@ -161,6 +163,15 @@ notebook_str = r'''
    "outputs": [],
    "source": [
     "df = nrt.filter(df, cluster=cluster)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df = nrt.filter_na(df, factor)"
    ]
   },
   {
