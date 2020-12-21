@@ -23,8 +23,8 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-DEFAULT_CSV_URL_PREFIX = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression/raw/master/'
-DEFAULT_CHANGELOG_URL = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression/raw/master/exp_changelog.csv'
+DEFAULT_CSV_URL_PREFIX = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/'
+DEFAULT_CHANGELOG_URL = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/exp_changelog.csv'
 DATA_FILES = defaultdict(lambda: 'stats.csv', {
     'mean_gflops': 'stats.csv',
     'mean_temperature': 'stats_monitoring.csv',
