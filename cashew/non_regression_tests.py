@@ -7,6 +7,7 @@ from scipy import stats
 import numpy
 import plotnine
 import hashlib
+from collections import defaultdict
 import os
 plotnine.options.figure_size = (10, 7.5)
 from plotnine import *
@@ -24,12 +25,12 @@ logger.addHandler(ch)
 
 DEFAULT_CSV_URL_PREFIX = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression/raw/master/'
 DEFAULT_CHANGELOG_URL = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression/raw/master/exp_changelog.csv'
-DATA_FILES = {
+DATA_FILES = defaultdict(lambda: 'stats.csv', {
     'mean_gflops': 'stats.csv',
     'mean_temperature': 'stats_monitoring.csv',
     'mean_frequency': 'stats_monitoring.csv',
     'mean_power_cpu': 'stats_monitoring.csv',
-}
+})
 
 
 def __get_url(url):

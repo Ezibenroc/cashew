@@ -51,7 +51,10 @@ def main(output_dir, cluster_list):
         'mean_gflops',
         'mean_frequency',
         'mean_power_cpu',
-        'mean_temperature'
+        'mean_temperature',
+        'intercept', 'mnk', 'mn', 'mk', 'nk', 'm', 'n', 'k',
+        'intercept_residual', 'mnk_residual', 'mn_residual', 'mk_residual', 'nk_residual',
+        'm_residual', 'n_residual', 'k_residual',
     ]
     src_notebook = os.path.join(output_dir, 'src.ipynb')
     with open(src_notebook, 'w') as f:
