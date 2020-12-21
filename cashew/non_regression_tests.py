@@ -132,7 +132,7 @@ def select_unique(df, col):
     return res[0]
 
 
-def plot_latest_distribution(df, col='avg_gflops'):
+def plot_latest_distribution(df, col='mean_gflops'):
     min_f = df[col].min()
     max_f = df[col].max()
     cluster = select_unique(df, 'cluster')
@@ -140,7 +140,7 @@ def plot_latest_distribution(df, col='avg_gflops'):
     mean = df[col].mean()
     spatial_var = df[col].std() / df[col].mean() * 100
     unit = {
-        'avg_gflops': 'Gflop/s',
+        'mean_gflops': 'Gflop/s',
         'mean_temperature': '°C',
         'mean_frequency': 'GHz'
     }.get(col, '')
@@ -250,7 +250,7 @@ def _mark_weird(df, confidence, naive, window, col):
     return df
 
 
-def mark_weird(df, changelog, confidence=0.95, naive=False, col='avg_gflops', nmin=8, keep=3, window=5):
+def mark_weird(df, changelog, confidence=0.95, naive=False, col='mean_gflops', nmin=8, keep=3, window=5):
     '''
     Mark the points of the given columns that are out of the prediction region of given confidence.
     The confidence should be a number between 0 and 1 (e.g. 0.95 for 95% confidence).

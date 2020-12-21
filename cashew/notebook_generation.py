@@ -91,10 +91,10 @@ notebook_str = r'''
    },
    "outputs": [],
    "source": [
-    "csv_url_prefix = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression/raw/master/'\n",
-    "changelog_url = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression/raw/master/exp_changelog.csv'\n",
+    "csv_url_prefix = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/'\n",
+    "changelog_url = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/exp_changelog.csv'\n",
     "cluster = 'yeti'\n",
-    "factor = 'avg_gflops'\n",
+    "factor = 'mean_gflops'\n",
     "confidence = 0.9999"
    ]
   },
@@ -118,7 +118,7 @@ notebook_str = r'''
    "outputs": [],
    "source": [
     "all_files = {\n",
-    "    'avg_gflops': 'stats.csv',\n",
+    "    'mean_gflops': 'stats.csv',\n",
     "    'mean_temperature': 'stats_monitoring.csv',\n",
     "    'mean_frequency': 'stats_monitoring.csv',\n",
     "    'mean_power_cpu': 'stats_monitoring.csv',\n",
