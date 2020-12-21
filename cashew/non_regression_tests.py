@@ -6,6 +6,8 @@ import logging
 from scipy import stats
 import numpy
 import plotnine
+import hashlib
+import os
 plotnine.options.figure_size = (10, 7.5)
 from plotnine import *
 from mizani.breaks import date_breaks
@@ -20,16 +22,37 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+DEFAULT_CSV_URL_PREFIX = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression/raw/master/'
+DEFAULT_CHANGELOG_URL = 'https://gitlab.in2p3.fr/tom.cornebize/g5k_data_non_regression/raw/master/exp_changelog.csv'
+DATA_FILES = {
+    'mean_gflops': 'stats.csv',
+    'mean_temperature': 'stats_monitoring.csv',
+    'mean_frequency': 'stats_monitoring.csv',
+    'mean_power_cpu': 'stats_monitoring.csv',
+}
 
-def get(url):
+
+def __get_url(url):
     '''
-    Download a CSV file at the specified URL and load it into a dataframe.
+    Download a CSV file at the specified URL.
     '''
     data = requests.get(url)
     if data.status_code != 200:
         raise ValueError(f'Could not download the CSV file, got an error {data.status_code}')
-    df = pandas.read_csv(io.BytesIO(data.content))
-    logger.info(f'Downloaded a dataframe with {len(df)} rows and {len(df.columns)} columns')
+    return data.content
+
+def get(url):
+    url_hash = hashlib.sha512(url.encode()).hexdigest()
+    path = f'/tmp/{url_hash}.csv'
+    if not os.path.isfile(path):
+        cached='from the web'
+        with open(path, 'wb') as f:
+            content = __get_url(url)
+            f.write(content)
+    else:
+        cached='from cache'
+    df = pandas.read_csv(path)
+    logger.info(f'Loaded ({cached}) a dataframe with {len(df)} rows and {len(df.columns)} columns')
     return df
 
 
@@ -38,7 +61,7 @@ def get_path(path):
     Load a CSV file from the specified path.
     '''
     df = pandas.read_csv(path)
-    logger.info(f'Downloaded a dataframe with {len(df)} rows and {len(df.columns)} columns')
+    logger.info(f'Loaded a dataframe with {len(df)} rows and {len(df.columns)} columns')
     return df
 
 
@@ -254,7 +277,7 @@ def mark_weird(df, changelog, confidence=0.95, naive=False, col='mean_gflops', n
     '''
     Mark the points of the given columns that are out of the prediction region of given confidence.
     The confidence should be a number between 0 and 1 (e.g. 0.95 for 95% confidence).
-    If naive is True, then it assumes that the sample variane is exactly equal to the true variance, which results in a
+    If naive is True, then it assumes that the sample variance is exactly equal to the true variance, which results in a
     tighter prediction region.
     '''
     df = df.reset_index(drop=True).copy()

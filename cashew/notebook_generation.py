@@ -2,6 +2,7 @@ import time
 import sys
 import asyncio
 import os
+from . import non_regression_tests as nrt
 
 
 async def run(cmd):
@@ -55,6 +56,11 @@ def main(output_dir, cluster_list):
     src_notebook = os.path.join(output_dir, 'src.ipynb')
     with open(src_notebook, 'w') as f:
         f.write(notebook_str)
+    # Now, let's download the CSV files, so the notebooks will not have to download them N times
+    files = set(nrt.DATA_FILES.values())
+    nrt.get(nrt.DEFAULT_CHANGELOG_URL)
+    for f in files:
+        nrt.get(nrt.DEFAULT_CSV_URL_PREFIX + f)
     t = time.time()
     asyncio.run(process_all(src_notebook, output_dir, clusters, parameters))
     t = time.time() - t
@@ -91,8 +97,6 @@ notebook_str = r'''
    },
    "outputs": [],
    "source": [
-    "csv_url_prefix = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/'\n",
-    "changelog_url = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/exp_changelog.csv'\n",
     "cluster = 'yeti'\n",
     "factor = 'mean_gflops'\n",
     "confidence = 0.9999"
@@ -108,30 +112,7 @@ notebook_str = r'''
     "%autoreload 2\n",
     "import requests\n",
     "import pandas\n",
-    "import io"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "all_files = {\n",
-    "    'mean_gflops': 'stats.csv',\n",
-    "    'mean_temperature': 'stats_monitoring.csv',\n",
-    "    'mean_frequency': 'stats_monitoring.csv',\n",
-    "    'mean_power_cpu': 'stats_monitoring.csv',\n",
-    "}\n",
-    "csv_url = csv_url_prefix + all_files[factor]"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
+    "import io\n",
     "from cashew import non_regression_tests as nrt\n",
     "import cashew\n",
     "print(cashew.__git_version__)"
@@ -144,6 +125,7 @@ notebook_str = r'''
    "outputs": [],
    "source": [
     "%%time\n",
+    "csv_url = nrt.DEFAULT_CSV_URL_PREFIX + nrt.DATA_FILES[factor]\n",
     "df = nrt.format(nrt.get(csv_url))"
    ]
   },
@@ -153,7 +135,7 @@ notebook_str = r'''
    "metadata": {},
    "outputs": [],
    "source": [
-    "changelog = nrt.format_changelog(nrt.get(changelog_url))"
+    "changelog = nrt.format_changelog(nrt.get(nrt.DEFAULT_CHANGELOG_URL))"
    ]
   },
   {
