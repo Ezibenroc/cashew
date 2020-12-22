@@ -14,7 +14,7 @@ for branch in $(git branch -r | grep exp_) ; do
     commit=$(git show --format="%H" $branch | head -n 1)
     echoerr "Processing branch $branch (commit $commit)"
     echo $branch | cut -d/ -f2 >> processed_branches
-    git cherry-pick $commit || exit 1
+    git cherry-pick $commit && git add new_data && git commit --amend --no-edit || exit 1
 done
 
 nb_archives=$(mkdir -p new_data && ls new_data | wc -l)
