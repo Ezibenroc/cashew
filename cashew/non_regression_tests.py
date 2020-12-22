@@ -5,11 +5,9 @@ import math
 import logging
 from scipy import stats
 import numpy
-import plotnine
 import hashlib
 from collections import defaultdict
 import os
-plotnine.options.figure_size = (10, 7.5)
 from plotnine import *
 from mizani.breaks import date_breaks
 from mizani.formatters import date_format
@@ -316,13 +314,16 @@ def plot_evolution_node(df, col, low_col, high_col, weird_col):
             scale_x_datetime(breaks=date_breaks(get_date_breaks(df)))
 
 
-def _generic_plot_evolution(df, col, low_col, high_col, weird_col, changelog=None):
+def _generic_plot_evolution(df, col, low_col, high_col, weird_col, changelog=None, node_limit=None):
     mid = df[col].median()
     w = 0.2
     min_f = min(mid*(1-w), df['low_bound'].min())
     max_f = max(mid*(1+w), df['high_bound'].max())
     cluster = select_unique(df, 'cluster')
     for node in sorted(df['node'].unique()):
+        if node_limit is not None and node > node_limit:
+            logger.warning(f'To save space, only plotted the evolution of {node_limit} node{"s" if node_limit>1 else ""}')
+            break
         print(f'{cluster}-{node}')
         plot = plot_evolution_node(df[df['node'] == node], col, low_col, high_col, weird_col) +\
                 ggtitle(f'Evolution of the node {cluster}-{node}') +\
@@ -340,13 +341,14 @@ def _generic_plot_evolution(df, col, low_col, high_col, weird_col, changelog=Non
         print(plot)
 
 
-def plot_evolution_cluster(df, changelog=None):
-    _generic_plot_evolution(df, df.interest_col, low_col='low_bound', high_col='high_bound', weird_col='weird', changelog=changelog)
+def plot_evolution_cluster(df, changelog=None, node_limit=None):
+    _generic_plot_evolution(df, df.interest_col, low_col='low_bound', high_col='high_bound', weird_col='weird',
+            changelog=changelog, node_limit=node_limit)
 
 
-def plot_evolution_cluster_windowed(df, changelog=None):
+def plot_evolution_cluster_windowed(df, changelog=None, node_limit=None):
     _generic_plot_evolution(df, col='rolling_avg', low_col='windowed_low_bound', high_col='windowed_high_bound',
-            weird_col='windowed_weird', changelog=changelog)
+            weird_col='windowed_weird', changelog=changelog, node_limit=node_limit)
 
 
 def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):

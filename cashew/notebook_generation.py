@@ -116,6 +116,9 @@ notebook_str = r'''
     "import requests\n",
     "import pandas\n",
     "import io\n",
+    "import plotnine\n",
+    "plotnine.options.figure_size = 10, 7.5\n",
+    "plotnine.options.dpi = 100\n",
     "from cashew import non_regression_tests as nrt\n",
     "import cashew\n",
     "print(cashew.__git_version__)"
@@ -249,7 +252,8 @@ notebook_str = r'''
    "outputs": [],
    "source": [
     "%%time\n",
-    "nrt.plot_evolution_cluster(marked, changelog=changelog)"
+    "node_limit = None if factor.startswith('mean') else 1\n",
+    "nrt.plot_evolution_cluster(marked, changelog=changelog, node_limit=node_limit)"
    ]
   },
   {
@@ -280,7 +284,8 @@ notebook_str = r'''
     "%%time\n",
     "import warnings\n",
     "warnings.filterwarnings(\"ignore\")\n",
-    "nrt.plot_evolution_cluster_windowed(marked, changelog=changelog)"
+    "node_limit = None if factor.startswith('mean') else 1\n",
+    "nrt.plot_evolution_cluster_windowed(marked, changelog=changelog, node_limit=node_limit)"
    ]
   }
  ],
