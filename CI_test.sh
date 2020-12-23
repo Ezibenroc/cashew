@@ -3,7 +3,7 @@ SSH_URL="git@github.com:Ezibenroc/g5k_test.git"
 echo "###  PROCESSING"
 cd /tmp
 rm -rf notebooks
-cashew test --output notebooks all || exit 1
+cashew test --output /tmp/notebooks all || exit 1
 git clone $SSH_URL repository
 cd repository
 # Let's keep a single commit in this repository, we do not need history, so better to save some space
