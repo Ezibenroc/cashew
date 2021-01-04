@@ -4,7 +4,7 @@ import sys
 from setuptools import setup
 import subprocess
 
-VERSION = '0.1.1'
+VERSION = '0.1.2'
 
 
 class CommandError(Exception):
@@ -53,7 +53,7 @@ if __name__ == '__main__':
                                   ]
           },
           install_requires=[
-              'pandas',
+              'pandas <= 1.1.0',  # pandas does not handle properly its dependencies, so let's stick to an older version
               'pyyaml',
               'tables',
               'numpy',
