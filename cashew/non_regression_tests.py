@@ -25,9 +25,11 @@ DEFAULT_CSV_URL_PREFIX = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/
 DEFAULT_CHANGELOG_URL = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/exp_changelog.csv'
 DATA_FILES = defaultdict(lambda: 'stats.csv', {
     'mean_gflops': 'stats.csv',
+    'mean_gflops_2048': 'stats.csv',
     'mean_temperature': 'stats_monitoring.csv',
     'mean_frequency': 'stats_monitoring.csv',
     'mean_power_cpu': 'stats_monitoring.csv',
+    'mean_power_dram': 'stats_monitoring.csv',
 })
 
 
@@ -163,8 +165,11 @@ def plot_latest_distribution(df, col='mean_gflops'):
     spatial_var = df[col].std() / df[col].mean() * 100
     unit = {
         'mean_gflops': 'Gflop/s',
+        'mean_gflops_2048': 'Gflop/s',
         'mean_temperature': '°C',
-        'mean_frequency': 'GHz'
+        'mean_frequency': 'GHz',
+        'mean_power_cpu': 'W',
+        'mean_power_dram': 'W',
     }.get(col, '')
     stat = f'Mean of {mean:.2f}{unit} | Spatial variability of {spatial_var:.2f}%'
     try:

@@ -49,8 +49,10 @@ def main(output_dir, cluster_list):
     clusters = list(cluster_list)
     parameters = [
         'mean_gflops',
+        'mean_gflops_2048',
         'mean_frequency',
         'mean_power_cpu',
+        'mean_power_dram',
         'mean_temperature',
         'intercept', 'mnk', 'mn', 'mk', 'nk', 'm', 'n', 'k',
         'intercept_residual', 'mnk_residual', 'mn_residual', 'mk_residual', 'nk_residual',
