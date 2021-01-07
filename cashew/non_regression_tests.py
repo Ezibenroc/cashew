@@ -188,6 +188,31 @@ def plot_latest_distribution(df, col='mean_gflops'):
             ggtitle(title)
 
 
+def drop_dims(vec):
+    try:
+        if len(vec) <= 1:
+            assert len(vec) == 1
+            return drop_dims(vec[0])
+        else:
+            return vec
+    except TypeError:  # already a scalar
+        return vec
+
+def dataframe_to_series(df):
+    '''
+    Transform a multi-index dataframe into a series of vectors (or matrices, or whatever N-dimensional object).
+
+    Typical use case:
+        df['cov'] = dataframe_to_series(df[['a', 'b', 'c']].expanding().cov())
+    '''
+    index, data = [], []
+    for idx, vec in df.groupby(level=0):
+        vec = drop_dims(vec.to_numpy())
+        index.append(idx)
+        data.append(vec)
+    return pandas.Series(data=data, index=index)
+
+
 def _compute_mu_sigma(df, changelog, cols, nmin, keep, window):
     '''
     For each (node, cpu) pair of the given dataframe, this function computes various summary values (such as mean and
@@ -215,23 +240,17 @@ def _compute_mu_sigma(df, changelog, cols, nmin, keep, window):
                     next_measures = next_measures[next_measures].head(n=keep).index
                     mask.iloc[next_measures] = True
                 local_df = df[mask]
-                for i, col in enumerate(cols):
-                    df.loc[mask, f'rolling_avg_{col}'] = local_df[col].rolling(window=window).mean()
-                    values = {
-                        f'mu_{col}'    : local_df[col].expanding(nmin).mean(),
-                        f'sigma_{col}' : local_df[col].expanding(nmin).std(),
-                    }
-                    if i == 0:
-                        values['nb_obs'] = local_df[col].expanding(nmin).count()
-                    for key, series in values.items():
-                        df.loc[mask, key] = series.shift(1)
-                        df.loc[mask, f'{key}_current'] = series
-                        df.loc[mask, f'{key}_old'] = series.shift(window)
-    if len(cols) == 1:
-        for key in ['mu', 'sigma']:
-            for suf in ['', '_current', '_old']:
-                df[f'{key}{suf}'] = df[f'{key}_{cols[0]}{suf}']
-        df['rolling_avg'] = df[f'rolling_avg_{cols[0]}']
+                df.loc[mask, f'rolling_avg'] = dataframe_to_series(local_df[cols].rolling(window=window).mean())
+                values = {
+                    'mu'     : dataframe_to_series(local_df[cols].expanding(nmin).mean()),
+                    'sigma'  : dataframe_to_series(local_df[cols].expanding(nmin).std()),
+                    'nb_obs' : dataframe_to_series(local_df[cols[0]].expanding(nmin).count()),
+                    'cov'    : dataframe_to_series(local_df[cols].expanding(nmin).cov()),
+                }
+                for key, series in values.items():
+                    df.loc[mask, key] = series.shift(1)
+                    df.loc[mask, f'{key}_current'] = series
+                    df.loc[mask, f'{key}_old'] = series.shift(window)
 
 
 def _mark_weird(df, confidence, naive, window, col):
