@@ -149,7 +149,7 @@ class NonRegressionTest(unittest.TestCase):
         window=5
         changelog = self.get_changelog()
         marked = self.get_dataframe()
-        nrt._compute_mu_sigma(marked, changelog, col='my_col', nmin=nmin, keep=keep, window=window)
+        nrt._compute_mu_sigma(marked, changelog, cols=['my_col'], nmin=nmin, keep=keep, window=window)
         for key in marked['my_id'].unique():
             tmp = marked[marked['my_id'] == key]
             avg = float(list(tmp['my_col'])[0])
@@ -181,7 +181,7 @@ class NonRegressionTest(unittest.TestCase):
         window=5
         changelog = self.get_changelog()
         marked = self.get_dataframe_simple(N=100)
-        nrt._compute_mu_sigma(marked, changelog, col='my_col', nmin=nmin, keep=keep, window=window)
+        nrt._compute_mu_sigma(marked, changelog, cols=['my_col'], nmin=nmin, keep=keep, window=window)
         expected_mu = list(marked['my_col'].expanding(nmin).mean().shift(1))
         expected_sigma = list(marked['my_col'].expanding(nmin).std().shift(1))
         expected_nbobs = list(marked['my_col'].expanding(nmin).count().shift(1))

@@ -188,7 +188,7 @@ def plot_latest_distribution(df, col='mean_gflops'):
             ggtitle(title)
 
 
-def _compute_mu_sigma(df, changelog, col, nmin, keep, window):
+def _compute_mu_sigma(df, changelog, cols, nmin, keep, window):
     '''
     For each (node, cpu) pair of the given dataframe, this function computes various summary values (such as mean and
     standard deviation) in between two changes of the given changelog.
@@ -215,18 +215,23 @@ def _compute_mu_sigma(df, changelog, col, nmin, keep, window):
                     next_measures = next_measures[next_measures].head(n=keep).index
                     mask.iloc[next_measures] = True
                 local_df = df[mask]
-                df.loc[mask, 'rolling_avg'] = local_df[col].rolling(window=window).mean()
-                values = {
-                    'mu'    : local_df[col].expanding(nmin).mean(),
-                    'sigma' : local_df[col].expanding(nmin).std(),
-                    'nb_obs': local_df[col].expanding(nmin).count(),
-                    '__nb__': local_df[col].expanding().count(),
-                }
-                for key, series in values.items():
-                    df.loc[mask, key] = series.shift(1)
-                    df.loc[mask, f'{key}_current'] = series
-                    df.loc[mask, f'{key}_old'] = series.shift(window)
-                df.drop(['__nb__', '__nb___old', '__nb___current'], axis=1, inplace=True)
+                for i, col in enumerate(cols):
+                    df.loc[mask, f'rolling_avg_{col}'] = local_df[col].rolling(window=window).mean()
+                    values = {
+                        f'mu_{col}'    : local_df[col].expanding(nmin).mean(),
+                        f'sigma_{col}' : local_df[col].expanding(nmin).std(),
+                    }
+                    if i == 0:
+                        values['nb_obs'] = local_df[col].expanding(nmin).count()
+                    for key, series in values.items():
+                        df.loc[mask, key] = series.shift(1)
+                        df.loc[mask, f'{key}_current'] = series
+                        df.loc[mask, f'{key}_old'] = series.shift(window)
+    if len(cols) == 1:
+        for key in ['mu', 'sigma']:
+            for suf in ['', '_current', '_old']:
+                df[f'{key}{suf}'] = df[f'{key}_{cols[0]}{suf}']
+        df['rolling_avg'] = df[f'rolling_avg_{cols[0]}']
 
 
 def _mark_weird(df, confidence, naive, window, col):
@@ -285,7 +290,7 @@ def mark_weird(df, changelog, confidence=0.95, naive=False, col='mean_gflops', n
     tighter prediction region.
     '''
     df = df.reset_index(drop=True).copy()
-    _compute_mu_sigma(df, changelog, col=col, nmin=nmin, keep=keep, window=window)
+    _compute_mu_sigma(df, changelog, cols=[col], nmin=nmin, keep=keep, window=window)
     _mark_weird(df, confidence=confidence, naive=naive, col=col, window=window)
     df.window_size = window
     df.interest_col = col
