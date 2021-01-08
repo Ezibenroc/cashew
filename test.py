@@ -1,6 +1,5 @@
 import unittest
 import tempfile
-from random import random, randint, shuffle
 import random
 import string
 import os
@@ -74,12 +73,12 @@ class ArchiveExtractionTest(unittest.TestCase):
             for core in range(32):
                 cpu = core % 2
                 rows.append(dict(
-                        function=func, m=randint(1, 1000), n=randint(1, 1000), k=randint(1, 1000),
-                        timestamp=random(), duration=random(),
+                        function=func, m=random.randint(1, 1000), n=random.randint(1, 1000), k=random.randint(1, 1000),
+                        timestamp=random.random(), duration=random.random(),
                         node=node, core=core, cluster=cluster, cpu=cpu,
                         jobid=jobid,
                     ))
-        shuffle(rows)
+        random.shuffle(rows)
         result = pandas.DataFrame(rows)
         assert len(result) > 50
         return result

@@ -301,8 +301,38 @@ def _mark_weird(df, confidence, naive, window, col):
         df.loc[df['mu_old'].isna(), 'windowed_weird'] = 'NA'
     return df
 
+def _mark_weird_multidim(df, confidence, window, cols):
+    def compute_score(row):
+        if not isinstance(row['mu'], numpy.ndarray):
+            return numpy.nan
+        vec = row['value'] - row['mu']
+        return vec.dot(numpy.linalg.inv(row['cov'])).dot(vec)
+    def compute_score_windowed(row):
+        if not isinstance(row['mu_old'], numpy.ndarray):
+            return numpy.nan
+        vec = row['rolling_avg'] - row['mu_old']
+        return vec.dot(numpy.linalg.inv(row['cov_old'])).dot(vec)
+    # First, the non-windowed weirdness
+    score = df.apply(lambda row: compute_score(row), axis=1)
+    n = df['nb_obs']
+    r = 1
+    p = len(cols)
+    score *= (n*r*(n-p))/((n+r)*(n-1)*p)
+    df['weird'] = score > stats.f.ppf(confidence, p, n-p)
+    df['likelihood'] = 1-stats.f.cdf(score, p, n-p)
+    df['log_likelihood'] = numpy.log(df['likelihood'])
+    df['weirdness'] = df['log_likelihood']
+    # Now the windowed weirdness
+    score_windowed = df.apply(lambda row: compute_score_windowed(row), axis=1)
+    n = df['nb_obs_old']
+    r = window
+    score_windowed *= (n*r*(n-p))/((n+r)*(n-1)*p)
+    df['windowed_weird'] = score > stats.f.ppf(confidence, p, n-p)
+    df['windowed_likelihood'] = 1-stats.f.cdf(score_windowed, p, n-p)
+    df['windowed_log_likelihood'] = numpy.log(df['windowed_likelihood'])
 
-def mark_weird(df, changelog, confidence=0.95, naive=False, col='mean_gflops', nmin=8, keep=3, window=5):
+
+def mark_weird(df, changelog, confidence=0.95, naive=False, cols=['mean_gflops'], nmin=8, keep=3, window=5):
     '''
     Mark the points of the given columns that are out of the prediction region of given confidence.
     The confidence should be a number between 0 and 1 (e.g. 0.95 for 95% confidence).
@@ -310,10 +340,14 @@ def mark_weird(df, changelog, confidence=0.95, naive=False, col='mean_gflops', n
     tighter prediction region.
     '''
     df = df.reset_index(drop=True).copy()
-    _compute_mu_sigma(df, changelog, cols=[col], nmin=nmin, keep=keep, window=window)
-    _mark_weird(df, confidence=confidence, naive=naive, col=col, window=window)
+    _compute_mu_sigma(df, changelog, cols=cols, nmin=nmin, keep=keep, window=window)
+    if len(cols) == 1:
+        _mark_weird(df, confidence=confidence, naive=naive, col=cols[0], window=window)
+        df.interest_col = cols[0]
+    else:
+        assert len(cols) > 1
+        _mark_weird_multidim(df, confidence=confidence, cols=cols, window=window)
     df.window_size = window
-    df.interest_col = col
     return df
 
 
