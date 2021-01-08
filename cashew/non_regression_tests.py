@@ -322,6 +322,8 @@ def _mark_weird_multidim(df, confidence, window, cols):
     df['likelihood'] = 1-stats.f.cdf(score, p, n-p)
     df['log_likelihood'] = numpy.log(df['likelihood'])
     df['weirdness'] = df['log_likelihood']
+    df.loc[df['log_likelihood'] >= 0, 'weirdness'] = 0
+    df['weirdness'] = df['weirdness'].abs()
     df.loc[df['mu'].isna(), 'weird'] = 'NA'
     # Now the windowed weirdness
     score_windowed = df.apply(lambda row: compute_score_windowed(row), axis=1)
@@ -332,6 +334,8 @@ def _mark_weird_multidim(df, confidence, window, cols):
     df['windowed_likelihood'] = 1-stats.f.cdf(score_windowed, p, n-p)
     df['windowed_log_likelihood'] = numpy.log(df['windowed_likelihood'])
     df['windowed_weirdness'] = df['windowed_log_likelihood']
+    df.loc[df['windowed_log_likelihood'] >= 0, 'windowed_weirdness'] = 0
+    df['windowed_weirdness'] = df['windowed_weirdness'].abs()
     df.loc[df['mu_old'].isna(), 'windowed_weird'] = 'NA'
 
 
@@ -347,9 +351,11 @@ def mark_weird(df, changelog, confidence=0.95, naive=False, cols=['mean_gflops']
     if len(cols) == 1:
         _mark_weird(df, confidence=confidence, naive=naive, col=cols[0], window=window)
         df.interest_col = cols[0]
+        df.multidim = False
     else:
         assert len(cols) > 1
         _mark_weird_multidim(df, confidence=confidence, cols=cols, window=window)
+        df.multidim = True
     df.window_size = window
     return df
 
@@ -495,6 +501,7 @@ class Color:
 def _generic_overview_weirdness(df, changelog, confidence, weirdness_col, weird_col, likelihood_col, discretize):
     def round_to_1(x):
         return round(x, -int(numpy.floor(numpy.log10(abs(x)))))
+    multidim = df.multidim
     df = df.copy()
     if discretize:
         base_prob = 1-confidence
@@ -504,14 +511,17 @@ def _generic_overview_weirdness(df, changelog, confidence, weirdness_col, weird_
         prob_intervals = [(min_p, max_p) for (min_p, max_p) in prob_intervals if min_p != max_p]
         prob_str = [f'{min_p*100}% - {max_p*100}%' for min_p, max_p in prob_intervals]
         df['probability_str'] = prob_str[-1]
+        plus = '[+] ' if not multidim else ''
         for (min_p, max_p), proba_str in zip(prob_intervals[:-1], prob_str[:-1]):
             df.loc[(df[weirdness_col] > 0) & (df[likelihood_col] >= min_p) & (df[likelihood_col] < max_p),
-                    'probability_str'] = f'[+] {proba_str}'
-            df.loc[(df[weirdness_col] < 0) & (df[likelihood_col] >= min_p) & (df[likelihood_col] < max_p),
-                    'probability_str'] = f'[-] {proba_str}'
-        final_prob_str =  [f'[+] {p}' for p in prob_str[:-1]]
+                    'probability_str'] = f'{plus}{proba_str}'
+            if not multidim:
+                df.loc[(df[weirdness_col] < 0) & (df[likelihood_col] >= min_p) & (df[likelihood_col] < max_p),
+                        'probability_str'] = f'[-] {proba_str}'
+        final_prob_str =  [f'{plus}{p}' for p in prob_str[:-1]]
         final_prob_str += [prob_str[-1]]
-        final_prob_str += [f'[-] {p}' for p in reversed(prob_str[:-1])]
+        if not multidim:
+            final_prob_str += [f'[-] {p}' for p in reversed(prob_str[:-1])]
         df['probability_str'] = pandas.Categorical(df['probability_str'], categories=final_prob_str, ordered=True)
         colors =  Color.linear_gradient('#FF0000', '#00FF00', n=len(prob_str))
         colors += Color.linear_gradient('#00FF00', '#0000FF', n=len(prob_str))[1:]
