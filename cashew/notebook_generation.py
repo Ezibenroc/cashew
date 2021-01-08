@@ -72,14 +72,6 @@ def main(output_dir, cluster_list):
     print(f'Processed {len(clusters)} clusters for {len(parameters)} parameters in {t:.2f} seconds')
 
 
-if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        cluster_list = sys.argv[1:]
-    else:
-        cluster_list = None
-    main(cluster_list)
-
-
 notebook_str = r'''
 {
  "cells": [
