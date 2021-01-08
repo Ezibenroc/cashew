@@ -228,6 +228,10 @@ class NonRegressionTest(unittest.TestCase):
         assert_almost_equal(list(df['sigma'])[1:], expected_sigma[1:])
         expected_nbobs = list(df['node'].expanding(nmin).count().shift(1))
         assert_equal(list(df['nb_obs'])[nmin:], expected_nbobs[nmin:])
+        expected_rolling = df[columns].rolling(window=window).mean().values.tolist()
+        assert_equal(list(df['rolling_avg']), expected_rolling)
+        expected_value = df[columns].values.tolist()
+        assert_equal(list(df['value']), expected_value)
 
 
     def test_mark_weird(self):

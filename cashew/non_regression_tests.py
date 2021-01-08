@@ -240,7 +240,8 @@ def _compute_mu_sigma(df, changelog, cols, nmin, keep, window):
                     next_measures = next_measures[next_measures].head(n=keep).index
                     mask.iloc[next_measures] = True
                 local_df = df[mask]
-                df.loc[mask, f'rolling_avg'] = dataframe_to_series(local_df[cols].rolling(window=window).mean())
+                df.loc[mask, 'rolling_avg'] = dataframe_to_series(local_df[cols].rolling(window=window).mean())
+                df.loc[mask, 'value'] = dataframe_to_series(local_df[cols])
                 values = {
                     'mu'     : dataframe_to_series(local_df[cols].expanding(nmin).mean()),
                     'sigma'  : dataframe_to_series(local_df[cols].expanding(nmin).std()),
