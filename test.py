@@ -1,6 +1,8 @@
 import unittest
 import tempfile
 from random import random, randint, shuffle
+import random
+import string
 import os
 import pandas
 import numpy
@@ -142,6 +144,29 @@ class NonRegressionTest(unittest.TestCase):
             })
         return pandas.DataFrame(rows)
 
+    @staticmethod
+    def get_multidataframe_simple(cluster='dahu', node=42, cpu=0, nb_cols=3, start_time=1580000000, N=100,
+                             meta_mu=12, meta_sigma=4, seed=42):
+        random.seed(seed)
+        rows = []
+        for i in range(start_time, start_time+N*10, 10):
+            rows.append({
+                'timestamp': pandas.to_datetime(i, unit='s'),
+                'cluster': cluster,
+                'node': node,
+                'cpu': cpu,
+            })
+        df = pandas.DataFrame(rows)
+        columns = []
+        for _ in range(nb_cols):
+            colname = ''.join(random.choices(string.ascii_lowercase, k=10))
+            columns.append(colname)
+            mu = random.normalvariate(meta_mu, meta_mu/4)
+            sigma = random.normalvariate(meta_sigma, meta_mu/4)
+            df[colname] = numpy.random.normal(mu, sigma, N)
+        return df, columns
+
+
     def test_mu_sigma(self):
         NA = float('NaN')
         nmin=8
@@ -189,6 +214,21 @@ class NonRegressionTest(unittest.TestCase):
         assert_almost_equal(list(marked['sigma']), expected_sigma)
         assert_equal(list(marked['nb_obs'])[nmin:], expected_nbobs[nmin:])
         assert_equal(list(marked['rolling_avg']), list(marked['my_col'].rolling(window=window).mean()))
+
+    def test_multidim_mu_sigma(self):
+        nmin=8
+        keep=3
+        window=5
+        changelog = self.get_changelog()
+        df, columns = self.get_multidataframe_simple(N=100)
+        nrt._compute_mu_sigma(df, changelog, cols=columns, nmin=nmin, keep=keep, window=window)
+        expected_mu = df[columns].expanding(nmin).mean().shift(1)[columns].values.tolist()
+        assert_almost_equal(list(df['mu'])[1:], expected_mu[1:])
+        expected_sigma = df[columns].expanding(nmin).std().shift(1)[columns].values.tolist()
+        assert_almost_equal(list(df['sigma'])[1:], expected_sigma[1:])
+        expected_nbobs = list(df['node'].expanding(nmin).count().shift(1))
+        assert_equal(list(df['nb_obs'])[nmin:], expected_nbobs[nmin:])
+
 
     def test_mark_weird(self):
         NA = float('NaN')
