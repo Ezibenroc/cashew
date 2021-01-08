@@ -318,18 +318,21 @@ def _mark_weird_multidim(df, confidence, window, cols):
     r = 1
     p = len(cols)
     score *= (n*r*(n-p))/((n+r)*(n-1)*p)
-    df['weird'] = score > stats.f.ppf(confidence, p, n-p)
+    df['weird'] = (score > stats.f.ppf(confidence, p, n-p)).astype(str)
     df['likelihood'] = 1-stats.f.cdf(score, p, n-p)
     df['log_likelihood'] = numpy.log(df['likelihood'])
     df['weirdness'] = df['log_likelihood']
+    df.loc[df['mu'].isna(), 'weird'] = 'NA'
     # Now the windowed weirdness
     score_windowed = df.apply(lambda row: compute_score_windowed(row), axis=1)
     n = df['nb_obs_old']
     r = window
     score_windowed *= (n*r*(n-p))/((n+r)*(n-1)*p)
-    df['windowed_weird'] = score > stats.f.ppf(confidence, p, n-p)
+    df['windowed_weird'] = (score > stats.f.ppf(confidence, p, n-p)).astype(str)
     df['windowed_likelihood'] = 1-stats.f.cdf(score_windowed, p, n-p)
     df['windowed_log_likelihood'] = numpy.log(df['windowed_likelihood'])
+    df['windowed_weirdness'] = df['windowed_log_likelihood']
+    df.loc[df['mu_old'].isna(), 'windowed_weird'] = 'NA'
 
 
 def mark_weird(df, changelog, confidence=0.95, naive=False, cols=['mean_gflops'], nmin=8, keep=3, window=5):
