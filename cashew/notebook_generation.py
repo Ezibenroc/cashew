@@ -75,6 +75,7 @@ def main(output_dir, cluster_list):
     # Now, let's download the CSV files, so the notebooks will not have to download them N times
     files = set(nrt.DATA_FILES.values())
     nrt.get(nrt.DEFAULT_CHANGELOG_URL)
+    nrt.get(nrt.DEFAULT_OUTLIERLOG_URL)
     for f in files:
         nrt.get(nrt.DEFAULT_CSV_URL_PREFIX + f)
     t = time.time()
@@ -147,7 +148,8 @@ notebook_str = r'''
    "metadata": {},
    "outputs": [],
    "source": [
-    "changelog = nrt.format_changelog(nrt.get(nrt.DEFAULT_CHANGELOG_URL))"
+    "changelog = nrt.format_changelog(nrt.get(nrt.DEFAULT_CHANGELOG_URL))\n",
+    "outlierlog = nrt.format_changelog(nrt.get(nrt.DEFAULT_OUTLIERLOG_URL))"
    ]
   },
   {
@@ -185,7 +187,7 @@ notebook_str = r'''
    "outputs": [],
    "source": [
     "%%time\n",
-    "marked=nrt.mark_weird(df, changelog, nmin=10, keep=5, window=5, naive=False, confidence=confidence, cols=[factor])\n",
+    "marked=nrt.mark_weird(df, changelog, outlierlog, nmin=10, keep=5, window=5, naive=False, confidence=confidence, cols=[factor])\n",
     "nb_weird = len(marked[marked.weird.isin({'positive', 'negative'})])\n",
     "nb_total = len(marked[marked.weird != 'NA'])\n",
     "print(f'{nb_weird/nb_total*100:.2f}% of measures are abnormal ({nb_weird}/{nb_total})')"
@@ -383,7 +385,8 @@ multidim_notebook_str = r'''
    "metadata": {},
    "outputs": [],
    "source": [
-    "changelog = nrt.format_changelog(nrt.get(nrt.DEFAULT_CHANGELOG_URL))"
+    "changelog = nrt.format_changelog(nrt.get(nrt.DEFAULT_CHANGELOG_URL))\n",
+    "outlierlog = nrt.format_changelog(nrt.get(nrt.DEFAULT_OUTLIERLOG_URL))"
    ]
   },
   {
@@ -411,7 +414,7 @@ multidim_notebook_str = r'''
    "outputs": [],
    "source": [
     "%%time\n",
-    "marked=nrt.mark_weird(df, changelog, nmin=10, keep=5, window=5, naive=False, confidence=confidence, cols=factor)\n",
+    "marked=nrt.mark_weird(df, changelog, outlierlog, nmin=10, keep=5, window=5, naive=False, confidence=confidence, cols=factor)\n",
     "nb_weird = len(marked[marked.weird.isin({'True'})])\n",
     "nb_total = len(marked[marked.weird != 'NA'])\n",
     "print(f'{nb_weird/nb_total*100:.2f}% of measures are abnormal ({nb_weird}/{nb_total})')"

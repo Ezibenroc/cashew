@@ -100,6 +100,13 @@ class NonRegressionTest(unittest.TestCase):
         return df
 
     @staticmethod
+    def get_outlierlog():
+        df = get_df('''
+        date,cluster,node,jobid,description
+        ''')
+        return df
+
+    @staticmethod
     def get_dataframe():
         rows = ['timestamp,cluster,node,cpu,my_col,my_id']
         for i in range(1, 31):
@@ -126,6 +133,7 @@ class NonRegressionTest(unittest.TestCase):
         rows = '\n'.join(rows)
         df = get_df(rows)
         df['timestamp'] = pandas.to_datetime(df['timestamp'])
+        df['jobid'] = 4242
         return df
 
     @staticmethod
@@ -141,7 +149,9 @@ class NonRegressionTest(unittest.TestCase):
                 'cpu': cpu,
                 colname: numpy.random.normal(mu, sigma),
             })
-        return pandas.DataFrame(rows)
+        df = pandas.DataFrame(rows)
+        df['jobid'] = 4242
+        return df
 
     @staticmethod
     def get_multidataframe_simple(cluster='dahu', node=42, cpu=0, nb_cols=3, start_time=1580000000, N=100,
@@ -163,6 +173,7 @@ class NonRegressionTest(unittest.TestCase):
             mu = random.normalvariate(meta_mu, meta_mu/4)
             sigma = random.normalvariate(meta_sigma, meta_mu/4)
             df[colname] = numpy.random.normal(mu, sigma, N)
+        df['jobid'] = 4242
         return df, columns
 
 
@@ -172,8 +183,9 @@ class NonRegressionTest(unittest.TestCase):
         keep=3
         window=5
         changelog = self.get_changelog()
+        outlierlog = self.get_outlierlog()
         marked = self.get_dataframe()
-        nrt._compute_mu_sigma(marked, changelog, cols=['my_col'], nmin=nmin, keep=keep, window=window)
+        nrt._compute_mu_sigma(marked, changelog, outlierlog, cols=['my_col'], nmin=nmin, keep=keep, window=window)
         for key in marked['my_id'].unique():
             tmp = marked[marked['my_id'] == key]
             avg = float(list(tmp['my_col'])[0])
@@ -204,8 +216,9 @@ class NonRegressionTest(unittest.TestCase):
         keep=3
         window=5
         changelog = self.get_changelog()
+        outlierlog = self.get_outlierlog()
         marked = self.get_dataframe_simple(N=100)
-        nrt._compute_mu_sigma(marked, changelog, cols=['my_col'], nmin=nmin, keep=keep, window=window)
+        nrt._compute_mu_sigma(marked, changelog, outlierlog, cols=['my_col'], nmin=nmin, keep=keep, window=window)
         expected_mu = list(marked['my_col'].expanding(nmin).mean().shift(1))
         expected_sigma = list(marked['my_col'].expanding(nmin).std().shift(1))
         expected_nbobs = list(marked['my_col'].expanding(nmin).count().shift(1))
@@ -219,8 +232,9 @@ class NonRegressionTest(unittest.TestCase):
         keep=3
         window=5
         changelog = self.get_changelog()
+        outlierlog = self.get_outlierlog()
         df, columns = self.get_multidataframe_simple(N=100)
-        nrt._compute_mu_sigma(df, changelog, cols=columns, nmin=nmin, keep=keep, window=window)
+        nrt._compute_mu_sigma(df, changelog, outlierlog, cols=columns, nmin=nmin, keep=keep, window=window)
         expected_mu = df[columns].expanding(nmin).mean().shift(1)[columns].values.tolist()
         assert_almost_equal(list(df['mu'])[1:], expected_mu[1:])
         expected_sigma = df[columns].expanding(nmin).std().shift(1)[columns].values.tolist()

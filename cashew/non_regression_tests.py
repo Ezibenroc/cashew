@@ -23,6 +23,7 @@ logger.addHandler(ch)
 
 DEFAULT_CSV_URL_PREFIX = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/'
 DEFAULT_CHANGELOG_URL = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/exp_changelog.csv'
+DEFAULT_OUTLIERLOG_URL = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/exp_outlierlog.csv'
 DATA_FILES = defaultdict(lambda: 'stats.csv', {
     'mean_gflops': 'stats.csv',
     'mean_gflops_2048': 'stats.csv',
@@ -213,7 +214,7 @@ def dataframe_to_series(df):
     return pandas.Series(data=data, index=index)
 
 
-def _compute_mu_sigma(df, changelog, cols, nmin, keep, window):
+def _compute_mu_sigma(df, changelog, outlierlog, cols, nmin, keep, window):
     '''
     For each (node, cpu) pair of the given dataframe, this function computes various summary values (such as mean and
     standard deviation) in between two changes of the given changelog.
@@ -225,18 +226,23 @@ def _compute_mu_sigma(df, changelog, cols, nmin, keep, window):
     **ASSUMPTION**: for a given node and a given CPU, the measures are sorted in increasing timestamp.
     '''
     cluster = select_unique(df, 'cluster')
+    df['outlier'] = False
     for node in df['node'].unique():
+        outliers = filter_changelog(outlierlog, cluster, node)
+        outliers_jobid = set(outliers['jobid'].unique())
+        df.loc[(df['node'] == node) & (df['jobid'].isin(outliers_jobid)), 'outlier'] = True
         local_changes = list(filter_changelog(changelog, cluster, node).sort_values(by='date')['date'])
         local_changes = [pandas.to_datetime('2000-01-01')] + local_changes + [pandas.to_datetime('2050-01-01')]
         intervals = list(zip(local_changes[:-1], local_changes[1:]))
         for cpu in df['cpu'].unique():
             cpu_mask = (df['node'] == node) & (df['cpu'] == cpu)
-            assert df[cpu_mask]['timestamp'].is_monotonic_increasing
+            base_mask = cpu_mask & (~df['outlier'])
+            assert df[base_mask]['timestamp'].is_monotonic_increasing
             for min_date, max_date in reversed(intervals):
-                mask = (cpu_mask &
-                       (df['timestamp'] >= min_date) & (df['timestamp'] < max_date))
+                time_mask = (df['timestamp'] >= min_date) & (df['timestamp'] < max_date)
+                mask = base_mask & time_mask
                 if keep > 0:
-                    next_measures = (cpu_mask & (df['timestamp'] >= max_date))
+                    next_measures = (base_mask & (df['timestamp'] >= max_date))
                     next_measures = next_measures[next_measures].head(n=keep).index
                     mask.iloc[next_measures] = True
                 local_df = df[mask]
@@ -252,6 +258,8 @@ def _compute_mu_sigma(df, changelog, cols, nmin, keep, window):
                     df.loc[mask, key] = series.shift(1)
                     df.loc[mask, f'{key}_current'] = series
                     df.loc[mask, f'{key}_old'] = series.shift(window)
+            keys = sum([[key, f'{key}_current', f'{key}_old'] for key in values], [])
+            df.loc[cpu_mask & df['outlier'], keys] = df[cpu_mask][keys].fillna(method='ffill')
 
 
 def _mark_weird(df, confidence, naive, window, col):
@@ -344,7 +352,7 @@ def _mark_weird_multidim(df, confidence, window, cols):
     df.loc[df['nb_obs_old'].isna(), 'windowed_weird'] = 'NA'
 
 
-def mark_weird(df, changelog, confidence=0.95, naive=False, cols=['mean_gflops'], nmin=8, keep=3, window=5):
+def mark_weird(df, changelog, outlierlog, confidence=0.95, naive=False, cols=['mean_gflops'], nmin=8, keep=3, window=5):
     '''
     Mark the points of the given columns that are out of the prediction region of given confidence.
     The confidence should be a number between 0 and 1 (e.g. 0.95 for 95% confidence).
@@ -352,7 +360,7 @@ def mark_weird(df, changelog, confidence=0.95, naive=False, cols=['mean_gflops']
     tighter prediction region.
     '''
     df = df.reset_index(drop=True).copy()
-    _compute_mu_sigma(df, changelog, cols=cols, nmin=nmin, keep=keep, window=window)
+    _compute_mu_sigma(df, changelog, outlierlog, cols=cols, nmin=nmin, keep=keep, window=window)
     if len(cols) == 1:
         _mark_weird(df, confidence=confidence, naive=naive, col=cols[0], window=window)
         df.interest_col = cols[0]
