@@ -258,7 +258,12 @@ def _mark_weird(df, confidence, naive, window, col):
     '''
     Assume that the function _compute_mu_sigma has been called previously.
     '''
-    df['standard_score'] = (df[col] - df['mu'])/df['sigma']
+    min_sig = 0.0001  # a minimal ratio sigma/mu (if the real sigma is too low, we replace it)
+    sig = df['sigma'].copy()
+    sig.loc[df['sigma']/df['mu'] <= min_sig] = df['mu']*min_sig
+    sig_old = df['sigma_old'].copy()
+    sig_old.loc[df['sigma_old']/df['mu_old'] <= min_sig] = df['mu_old']*min_sig
+    df['standard_score'] = (df[col] - df['mu'])/sig
     if naive:
         one_side_conf = 1-(1-confidence)/2
         factor = stats.norm.ppf(one_side_conf)
@@ -269,7 +274,7 @@ def _mark_weird(df, confidence, naive, window, col):
         factor_windowed = (base_factor*(df['nb_obs']+window)/(df['nb_obs']*window))**(1/2)
         df['likelihood'] = 1-stats.f.cdf(df['standard_score']**2, 1, df['nb_obs']-1)
         score          = df['standard_score']**2 * (df['nb_obs'])/(df['nb_obs']+1)
-        score_windowed = ((df['rolling_avg']-df['mu_old'])/df['sigma_old'])**2 * (df['nb_obs']*window)/(df['nb_obs']+window)
+        score_windowed = ((df['rolling_avg']-df['mu_old'])/sig_old)**2 * (df['nb_obs']*window)/(df['nb_obs']+window)
         df['likelihood'] = 1-stats.f.cdf(score, 1, df['nb_obs']-1)
         df['windowed_likelihood'] = 1-stats.f.cdf(score_windowed, 1, df['nb_obs']-1)
         df['windowed_log_likelihood'] = numpy.log(df['windowed_likelihood'])
@@ -278,10 +283,10 @@ def _mark_weird(df, confidence, naive, window, col):
     df['weirdness'] = df['log_likelihood']
     df.loc[df['log_likelihood'] >= 0, 'weirdness'] = 0
     df.loc[df['log_likelihood'] < 0, 'weirdness'] = numpy.sign(df[col]-df['mu'])*abs(df['log_likelihood'])
-    df['low_bound']  = df['mu'] - df['sigma']*factor
-    df['high_bound'] = df['mu'] + df['sigma']*factor
-    df['weird_pos'] = df[col] - df['mu'] > factor*df['sigma']
-    df['weird_neg'] = df[col] - df['mu'] < -factor*df['sigma']
+    df['low_bound']  = df['mu'] - sig*factor
+    df['high_bound'] = df['mu'] + sig*factor
+    df['weird_pos'] = df[col] - df['mu'] > factor*sig
+    df['weird_neg'] = df[col] - df['mu'] < -factor*sig
     df['weird'] = (df['weird_pos'] | df['weird_neg']).astype(str)
     df.loc[df['weird_pos'] == True, 'weird'] = 'positive'
     df.loc[df['weird_neg'] == True, 'weird'] = 'negative'
@@ -291,10 +296,10 @@ def _mark_weird(df, confidence, naive, window, col):
         df['windowed_weirdness'] = df['windowed_log_likelihood']
         df.loc[df['windowed_log_likelihood'] >= 0, 'windowed_weirdness'] = 0
         df.loc[df['windowed_log_likelihood'] < 0, 'windowed_weirdness'] = numpy.sign(df['rolling_avg']-df['mu_old'])*abs(df['windowed_log_likelihood'])
-        df['windowed_low_bound']  = df['mu_old'] - df['sigma_old']*factor_windowed
-        df['windowed_high_bound'] = df['mu_old'] + df['sigma_old']*factor_windowed
-        df['windowed_weird_pos'] = df['rolling_avg'] - df['mu_old'] > factor_windowed*df['sigma_old']
-        df['windowed_weird_neg'] = df['rolling_avg'] - df['mu_old'] < -factor_windowed*df['sigma_old']
+        df['windowed_low_bound']  = df['mu_old'] - sig_old*factor_windowed
+        df['windowed_high_bound'] = df['mu_old'] + sig_old*factor_windowed
+        df['windowed_weird_pos'] = df['rolling_avg'] - df['mu_old'] > factor_windowed*sig_old
+        df['windowed_weird_neg'] = df['rolling_avg'] - df['mu_old'] < -factor_windowed*sig_old
         df['windowed_weird'] = (df['windowed_weird_pos'] | df['windowed_weird_neg']).astype(str)
         df.loc[df['windowed_weird_pos'] == True, 'windowed_weird'] = 'positive'
         df.loc[df['windowed_weird_neg'] == True, 'windowed_weird'] = 'negative'
