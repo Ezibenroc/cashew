@@ -241,13 +241,16 @@ def _compute_mu_sigma(df, changelog, outlierlog, cols, nmin, keep, window):
             for min_date, max_date in reversed(intervals):
                 time_mask = (df['timestamp'] >= min_date) & (df['timestamp'] < max_date)
                 mask = base_mask & time_mask
+                mask_with_outliers = cpu_mask & time_mask
                 if keep > 0:
                     next_measures = (base_mask & (df['timestamp'] >= max_date))
                     next_measures = next_measures[next_measures].head(n=keep).index
                     mask.iloc[next_measures] = True
+                    mask_with_outliers.iloc[next_measures] = True
+                local_df = df[mask_with_outliers]
+                df.loc[mask_with_outliers, 'rolling_avg'] = dataframe_to_series(local_df[cols].rolling(window=window).mean())
+                df.loc[mask_with_outliers, 'value'] = dataframe_to_series(local_df[cols])
                 local_df = df[mask]
-                df.loc[mask, 'rolling_avg'] = dataframe_to_series(local_df[cols].rolling(window=window).mean())
-                df.loc[mask, 'value'] = dataframe_to_series(local_df[cols])
                 values = {
                     'mu'     : dataframe_to_series(local_df[cols].expanding(nmin).mean()),
                     'sigma'  : dataframe_to_series(local_df[cols].expanding(nmin).std()),
