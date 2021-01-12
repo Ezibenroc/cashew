@@ -246,6 +246,39 @@ class NonRegressionTest(unittest.TestCase):
         expected_value = df[columns].values.tolist()
         assert_equal(list(df['value']), expected_value)
 
+    def test_outliers(self):
+        '''
+        Note: this test is not correct and there is a small bug with outliers. For all outliers, the last non-outlier
+        point is not included in the computation of mu (and sigma, and all other statistics).
+        Using method='bfill' instead of method='ffill' for the fillna would solve this, but then an outlier with no
+        non-outlier after would have a NA value, which is worse.
+        The true solution would be more tedious to implement.
+        '''
+        csv = '''
+        timestamp,cluster,node,cpu,jobid,my_col,expected_mu
+        2021-01-01,c,1,0,11,4,
+        2021-01-02,c,1,0,12,3,4
+        2021-01-03,c,1,0,13,5,3.5
+        2021-01-04,c,1,0,14,42,3.5
+        2021-01-05,c,1,0,15,72,3.5
+        2021-01-05,c,1,0,16,5,4
+        2021-01-05,c,1,0,17,5,4.25
+        2021-01-06,c,1,0,18,28,4.25
+        '''
+        df = get_df(csv)
+        df['timestamp'] = pandas.to_datetime(df['timestamp'])
+        changelog = self.get_changelog()
+        outlierlog = self.get_outlierlog()
+        outlierlog = get_df('''
+        date,cluster,node,jobid,description
+        AA,c,1,14,x
+        AA,c,1,15,x
+        AA,c,1,18,x
+        ''')
+        outlierlog['node'] = outlierlog['node'].astype(str)
+        nrt._compute_mu_sigma(df, changelog, outlierlog, cols=['my_col'], nmin=1, keep=1, window=1)
+        assert_equal(list(df['mu']), list(df['expected_mu']))
+
 
     def test_mark_weird(self):
         NA = float('NaN')
