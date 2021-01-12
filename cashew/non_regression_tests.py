@@ -390,14 +390,16 @@ def plot_evolution_node(df, col, low_col, high_col, weird_col):
     return ggplot(df) +\
             aes(x='timestamp', y=col) +\
             geom_line() +\
-            geom_point(aes(fill=weird_col), size=1.5, stroke=0) +\
-            geom_point(df[df[weird_col].isin({'positive', 'negative'})], aes(fill=weird_col), size=3, stroke=0) +\
+            geom_point(aes(fill=weird_col, shape='outlier'), size=1.5, stroke=0) +\
+            geom_point(df[df[weird_col].isin({'positive', 'negative'})], aes(fill=weird_col, shape='outlier'), size=3, stroke=0) +\
+            scale_shape_manual({False: 'o', True: 'X'}) +\
             scale_fill_manual({
                 'NA': '#AAAAAA',
                 'positive': '#FF0000',
                 'negative': '#0000FF',
                 'False': '#00FF00'}) +\
             theme_bw() +\
+            labs(fill='Weird', shape='Outlier') +\
             geom_ribbon(aes(ymin=low_col, ymax=high_col), color='grey', alpha=0.2) +\
             facet_wrap('cpu', labeller='label_both') +\
             scale_x_datetime(breaks=date_breaks(get_date_breaks(df)))
@@ -454,11 +456,13 @@ def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):
     plot = ggplot() +\
         aes(x='timestamp', y='node_cpu') +\
         geom_point(df[df[weird_col] == 'NA'], *[aes(fill=col) if not grey_after_reset else None],  **{**points_args, **({'fill': '#AAAAAA'} if grey_after_reset else {})}) +\
-        geom_point(df[df[weird_col] == 'False'], aes(fill=col), **points_args) +\
+        geom_point(df[df[weird_col] == 'False'], aes(fill=col, shape='outlier'), **points_args) +\
+        scale_shape_manual({False: 'o', True: 'X'}) +\
         scale_color_manual({
             'protocol': '#888888',
             'G5K': '#DD9500'},
             guide=False) +\
+        labs(shape='Outlier') +\
         theme_bw() +\
         scale_x_datetime(breaks=date_breaks(get_date_breaks(df))) +\
         ylab('Node:CPU') +\
@@ -470,7 +474,7 @@ def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):
         plot += geom_vline(global_changes, aes(xintercept='date', color='type'), size=1)
     weird_points = df[~df[weird_col].isin({'NA', 'False'})]
     if len(weird_points) > 0:
-        plot += geom_point(weird_points, aes(fill=col), **points_args)
+        plot += geom_point(weird_points, aes(fill=col, shape='outlier'), **points_args)
     return plot
 
 
