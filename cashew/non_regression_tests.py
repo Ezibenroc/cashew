@@ -411,6 +411,7 @@ def _generic_plot_evolution(df, col, low_col, high_col, weird_col, changelog=Non
     min_f = min(mid*(1-w), df['low_bound'].min())
     max_f = max(mid*(1+w), df['high_bound'].max())
     cluster = select_unique(df, 'cluster')
+    all_plots = {}
     for node in sorted(df['node'].unique()):
         if node_limit is not None and node > node_limit:
             logger.warning(f'To save space, only plotted the evolution of {node_limit} node{"s" if node_limit>1 else ""}')
@@ -430,15 +431,17 @@ def _generic_plot_evolution(df, col, low_col, high_col, weird_col, changelog=Non
             plot += geom_label(data=log[log['type'] == 'G5K'], mapping=aes(label='description', x='date', color='type'), y=max_f, size=8)
             plot += geom_label(data=log[log['type'] != 'G5K'], mapping=aes(label='description', x='date', color='type'), y=min_f, size=8)
         print(plot)
+        all_plots[f'{cluster}-{node}'] = plot
+    return all_plots
 
 
 def plot_evolution_cluster(df, changelog=None, node_limit=None):
-    _generic_plot_evolution(df, df.interest_col, low_col='low_bound', high_col='high_bound', weird_col='weird',
+    return _generic_plot_evolution(df, df.interest_col, low_col='low_bound', high_col='high_bound', weird_col='weird',
             changelog=changelog, node_limit=node_limit)
 
 
 def plot_evolution_cluster_windowed(df, changelog=None, node_limit=None):
-    _generic_plot_evolution(df, col='rolling_avg', low_col='windowed_low_bound', high_col='windowed_high_bound',
+    return _generic_plot_evolution(df, col='rolling_avg', low_col='windowed_low_bound', high_col='windowed_high_bound',
             weird_col='windowed_weird', changelog=changelog, node_limit=node_limit)
 
 

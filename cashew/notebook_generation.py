@@ -261,7 +261,7 @@ notebook_str = r'''
    "source": [
     "%%time\n",
     "node_limit = None if factor.startswith('mean') else 1\n",
-    "nrt.plot_evolution_cluster(marked, changelog=changelog, node_limit=node_limit)"
+    "tmp = nrt.plot_evolution_cluster(marked, changelog=changelog, node_limit=node_limit)"
    ]
   },
   {
@@ -293,7 +293,7 @@ notebook_str = r'''
     "import warnings\n",
     "warnings.filterwarnings(\"ignore\")\n",
     "node_limit = None if factor.startswith('mean') else 1\n",
-    "nrt.plot_evolution_cluster_windowed(marked, changelog=changelog, node_limit=node_limit)"
+    "tmp = nrt.plot_evolution_cluster_windowed(marked, changelog=changelog, node_limit=node_limit)"
    ]
   }
  ],
