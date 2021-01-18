@@ -392,12 +392,12 @@ def plot_evolution_node(df, col, low_col, high_col, weird_col):
             geom_line() +\
             geom_point(aes(fill=weird_col, shape='outlier'), size=1.5, stroke=0) +\
             geom_point(df[df[weird_col].isin({'positive', 'negative'})], aes(fill=weird_col, shape='outlier'), size=3, stroke=0) +\
-            scale_shape_manual({False: 'o', True: 'X'}) +\
+            scale_shape_manual({False: 'o', True: 'X'}, limits=[False, True]) +\
             scale_fill_manual({
                 'NA': '#AAAAAA',
                 'positive': '#FF0000',
                 'negative': '#0000FF',
-                'False': '#00FF00'}) +\
+                'False': '#00FF00'}, limits=['False', 'positive', 'negative']) +\
             theme_bw() +\
             labs(fill='Weird', shape='Outlier') +\
             geom_ribbon(aes(ymin=low_col, ymax=high_col), color='grey', alpha=0.2) +\
@@ -457,7 +457,7 @@ def _generic_overview(df, changelog, col, weird_col, grey_after_reset=True):
         aes(x='timestamp', y='node_cpu') +\
         geom_point(df[df[weird_col] == 'NA'], *[aes(fill=col) if not grey_after_reset else None],  **{**points_args, **({'fill': '#AAAAAA'} if grey_after_reset else {})}) +\
         geom_point(df[df[weird_col] == 'False'], aes(fill=col, shape='outlier'), **points_args) +\
-        scale_shape_manual({False: 'o', True: 'X'}) +\
+        scale_shape_manual({False: 'o', True: 'X'}, limits=[False, True]) +\
         scale_color_manual({
             'protocol': '#888888',
             'G5K': '#DD9500'},
