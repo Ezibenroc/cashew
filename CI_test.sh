@@ -4,6 +4,7 @@ echo "###  PROCESSING"
 cd /tmp
 rm -rf notebooks
 cashew test --output /tmp/notebooks all || exit 1
+du -sh /tmp/notebooks/*
 git clone $SSH_URL notebook_repository
 cd notebook_repository
 # Let's keep a single commit in this repository, we do not need history, so better to save some space
