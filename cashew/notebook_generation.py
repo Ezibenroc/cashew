@@ -2,7 +2,18 @@ import time
 import sys
 import asyncio
 import os
+import re
+import logging
 from . import non_regression_tests as nrt
+
+# Setting up a logger
+logger = logging.getLogger('notebook_generation')
+logger.setLevel(logging.INFO)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 
 async def run(cmd):
@@ -17,6 +28,23 @@ async def run(cmd):
     stdout, stderr = await proc.communicate()
 
 
+def is_executed(notebook):
+    # It seems that papermill sometimes create a non-executed notebook. I do not know why, and I do not want to spend
+    # time tracking this bug. Instead, we will just use this naive function to loop until the notebook creation
+    # succeeded. Here we test whether the first cell has been executed or not, we do not even iterate over the whole
+    # notebook.
+    reg = re.compile('\s*"execution_count":\s(.*),\s*')
+    with open(notebook) as f:
+        for line in f:
+            match = reg.fullmatch(line)
+            if match:
+                group = match.groups()[0]
+                if group == 'null':
+                    return False
+                else:
+                    assert group == '1'
+                    return True
+
 async def run_notebook(src_notebook, dst_dir, cluster, parameter):
     params = {'cluster': cluster, 'factor': parameter}
     if isinstance(parameter, str):
@@ -24,7 +52,12 @@ async def run_notebook(src_notebook, dst_dir, cluster, parameter):
     else:
         par_str = '__'.join(parameter)
     dst_notebook = os.path.join(dst_dir, f'{cluster}_{par_str}.ipynb')
-    await run(f'papermill {src_notebook} {dst_notebook} -y "{params}"')
+    while True:
+        await run(f'papermill {src_notebook} {dst_notebook} -y "{params}"')
+        if is_executed(dst_notebook):
+            break
+        else:
+            logger.warning(f'Papermill failed for a notebook, will retry: {dst_notebook}')
     return dst_notebook
 
 
