@@ -135,25 +135,41 @@ def read_monitoring(archive_name, columns=None):
     df['timestamp'] = pandas.to_datetime(df['timestamp'])
     core_mapping = platform_to_cpu_mapping(get_platform(archive_name))
     columns = ['timestamp', 'cluster', 'node', 'jobid', 'start_time', 'expfile_hash']
-    temperature = my_melt(df, 'temperature_core_([0-9]+)', 'value', columns)
     frequency   = my_melt(df, 'frequency_core_([0-9]+)', 'value', columns)
-    # removing the cores with largest IDs (they are not real cores, just hyperthreads)
-    frequency = frequency[frequency['group'] <= max(core_mapping.keys())]
-    temperature = temperature[temperature['group'] <= max(core_mapping.keys())]
-    for frame, val in [(temperature, 'temperature'), (frequency, 'frequency')]:
+    frequency = frequency[frequency['group'].isin(core_mapping)]
+    frequency['value'] *= 1e-9  # Hz → GHz
+    monitoring_values = [(frequency, 'frequency')]
+    try:
+        temperature = my_melt(df, 'temperature_core_([0-9]+)', 'value', columns)
+    except ValueError:
+        logger.warning('No core temperature available')
+    else:
+        temperature = temperature[temperature['group'] <= max(core_mapping.keys())]
+        monitoring_values.append((temperature, 'temperature'))
+    for frame, val in monitoring_values:
         frame['cpu'] = frame.apply(lambda row: core_mapping[row.group], axis=1)
         frame['core'] = frame['group']
-        frame.drop('group', axis=1, inplace=True)
         frame['kind'] = val
-    frequency['value'] *= 1e-9  # Hz → GHz
-    result = pandas.concat([frequency, temperature])
+    result = pandas.concat([v[0] for v in monitoring_values])
     try:
         temperature_cpu = my_melt(df, 'temperature_cpu_([0-9]+)', 'value', columns)
     except ValueError:
         logger.warning('No CPU temperature available')
+        key = None
+        if 'temperature_acpitz' in df.columns:
+            key = 'temperature_acpitz'
+        elif 'temperature_k10temp_Tdie' in df.columns:
+            key = 'temperature_k10temp_Tdie'
+        if key:
+            temperature_cpu = df[columns + [key]].copy()
+            temperature_cpu['cpu'] = 0
+            temperature_cpu['core'] = 0
+            temperature_cpu['kind'] = 'temperature'
+            temperature_cpu['value'] = temperature_cpu[key]
+            temperature_cpu.drop(key, axis=1, inplace=True)
+            result = pandas.concat([result, temperature_cpu])
     else:
         temperature_cpu['cpu'] = temperature_cpu['group']
-        temperature_cpu.drop('group', axis=1, inplace=True)
         temperature_cpu['core'] = -1
         temperature_cpu['kind'] = 'temperature'
         result = pandas.concat([result, temperature_cpu])
@@ -165,7 +181,6 @@ def read_monitoring(archive_name, columns=None):
     else:
         for frame, val in [(power_cpu, 'power_cpu'), (power_dram, 'power_dram')]:
             frame['cpu'] = frame['group']
-            frame.drop('group', axis=1, inplace=True)
             frame['core'] = -1
             frame['kind'] = val
             result = pandas.concat([result, frame])
@@ -174,6 +189,7 @@ def read_monitoring(archive_name, columns=None):
     for step in ['start', 'stop']:
         result[f'{step}_exp'] = pandas.to_datetime(timestamps['run_exp'][step]).timestamp()
     result['timestamp'] = result['timestamp'].astype(numpy.int64) / 10 ** 9
+    result.drop('group', axis=1, inplace=True)
     return result
 
 
