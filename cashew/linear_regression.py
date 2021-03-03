@@ -82,10 +82,10 @@ def compute_dgemm_reg(df):
     return reg
 
 
-def compute_monitoring_stat(df, time_after_start=120, time_window=240, time_after_stop=30):
+def compute_monitoring_stat(df, time_after_start=60, time_window=180):
     start = get_unique(df, 'start_exp')
     stop = get_unique(df, 'stop_exp')
-    if stop - start < time_after_start + time_window + time_after_stop:
+    if stop - start < time_after_start + 2*time_window:
         raise ValueError('Experiment was too short, cannot compute monitoring values')
     tmp = df[(df['timestamp'] > start + time_after_start) &
               (df['timestamp'] < start + time_after_start + time_window)]
