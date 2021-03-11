@@ -186,7 +186,11 @@ def plot_latest_distribution(df, col='mean_gflops'):
         temporal_var = (df['mnk_residual'] / df['mnk']).mean()*100
         stat += f' | Temporal variability of {temporal_var:.2f}%'
     except KeyError:
-        pass
+        if col.startswith('mean_'):
+            colstd = 'std_' + col[len('mean_'):]
+            print(colstd)
+            temporal_var = (df[colstd] / df[col]).mean()*100
+            stat += f' | Temporal variability of {temporal_var:.2f}%'
     title = f'Distribution of the latest runs made on the cluster {cluster}\n{stat}'
     return ggplot(df) +\
             aes(x=col) +\
