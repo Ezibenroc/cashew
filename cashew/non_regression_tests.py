@@ -137,9 +137,11 @@ def filter_na(df, *columns):
     return df
 
 
-def filter_latest(df):
+def filter_latest(df, remove_day=7):
     '''
     Keep only the most recent run for each node of the dataframe.
+    Remove the entries older than the given number of days (useful if one node is dead since a long time and the cluster
+    changed significantly afterwards, to not have a "wrong" impression of the distribution).
     '''
     df = df.copy()
     all_nodes = [(cluster, node) for _, (cluster, node) in df[['cluster', 'node']].drop_duplicates().iterrows()]
@@ -147,6 +149,13 @@ def filter_latest(df):
         mask = (df['cluster'] == cluster) & (df['node'] == node)
         last_run = df[mask]['start_time'].max()
         df.drop(df[mask & (df['start_time'] < last_run)].index, inplace=True)
+    newest_run = df['timestamp'].max()
+    old_len = len(df)
+    date_limit = newest_run - pandas.to_timedelta(remove_day, unit='d')
+    df = df[df['timestamp'] >= date_limit]
+    removed = old_len - len(df)
+    if removed > 0:
+        logger.warning(f'Removed {removed} rows that were too old (no job since at least {remove_day} days).')
     logger.info(f'Filtered the dataframe, there remains {len(df)} rows')
     return df
 
@@ -158,10 +167,10 @@ def select_unique(df, col):
 
 
 def plot_latest_distribution(df, col='mean_gflops'):
-    min_f = df[col].min()
-    max_f = df[col].max()
     cluster = select_unique(df, 'cluster')
     df = filter_latest(df)
+    min_f = df[col].min()
+    max_f = df[col].max()
     mean = df[col].mean()
     spatial_var = df[col].std() / df[col].mean() * 100
     unit = {
