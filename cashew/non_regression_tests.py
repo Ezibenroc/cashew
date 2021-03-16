@@ -192,9 +192,12 @@ def plot_latest_distribution(df, col='mean_gflops'):
             temporal_var = (df[colstd] / df[col]).mean()*100
             stat += f' | Temporal variability of {temporal_var:.2f}%'
     title = f'Distribution of the latest runs made on the cluster {cluster}\n{stat}'
+    binwidth = (max_f-min_f)/10
+    if binwidth == 0:
+        binwidth = max_f/100
     return ggplot(df) +\
             aes(x=col) +\
-            geom_histogram(binwidth=(max_f-min_f)/10, alpha=0.5) +\
+            geom_histogram(binwidth=binwidth, alpha=0.5) +\
             theme_bw() +\
             geom_vline(xintercept=mean) +\
             expand_limits(x=(min_f, max_f)) +\
