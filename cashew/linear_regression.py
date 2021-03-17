@@ -87,8 +87,9 @@ def compute_monitoring_stat(df, time_after_start=60, time_window=180):
     stop = get_unique(df, 'stop_exp')
     if stop - start < time_after_start + 2*time_window:
         cluster = get_unique(df, 'cluster')
+        jobid = get_unique(df, 'jobid')
         date = pandas.to_datetime(start, unit='s')
-        raise ValueError(f'Experiment made on cluster {cluster} on {date} was too short, cannot compute monitoring values')
+        raise ValueError(f'Experiment made on cluster {cluster} on {date} (jobid={jobid}) was too short, cannot compute monitoring values')
     tmp = df[(df['timestamp'] > start + time_after_start) &
               (df['timestamp'] < start + time_after_start + time_window)]
     freq = tmp[tmp['kind'] == 'frequency']['value']
