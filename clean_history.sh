@@ -22,10 +22,10 @@ git commit -m "First commit"
 git push --set-upstream origin master
 
 wget https://raw.githubusercontent.com/Ezibenroc/cashew/master/split_hdf5.py -O ~/split_hdf5.py
-python3 ~/split_hdf5.py data.db 2019 3
+python3 ~/split_hdf5.py data.db 2019 1
 mv data.db /tmp/old_data.db
 mv $(ls data_20*db | tail -n 1) data.db
-python3 ~/split_hdf5.py data_monitoring.db 2019 3
+python3 ~/split_hdf5.py data_monitoring.db 2019 1
 mv data_monitoring.db /tmp/old_data_monitoring.db
 mv $(ls data_monitoring_20*db | tail -n 1) data_monitoring.db
 
