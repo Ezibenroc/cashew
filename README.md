@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4625737.svg)](https://doi.org/10.5281/zenodo.4625737)
+
 This Python library is intended to work on [peanut](https://github.com/Ezibenroc/peanut/) archives. One of the main use
 cases is to run performance non-regression tests.
 
