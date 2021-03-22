@@ -19,7 +19,10 @@ def extract_from_file(input_name, output_name, first_epoch, last_epoch):
     df = pandas.read_hdf(input_name, where=[f'start_time >= {first_epoch}', f'start_time < {last_epoch}'])
     if len(df) == 0:
         raise NoData()
-    df.to_hdf(output_name, 'DATABASE', complib='zlib', complevel=9, format='table',
+    min_size = {'cluster': 20}
+    if 'function' in df.columns:
+        min_size['function'] = 20
+    df.to_hdf(output_name, 'DATABASE', complib='zlib', complevel=9, format='table', min_itemsize=min_size,
               data_columns=['function', 'cluster', 'node', 'jobid', 'start_time']
             )
     print(f'Wrote {len(df)} rows in file {output_name}, took {time.time()-t:.0f} seconds')
