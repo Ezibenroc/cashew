@@ -1,6 +1,6 @@
 TOKEN_PATH="GITLAB_TOKEN"
-REPO_URL="https://gitlab.in2p3.fr/cornebize/g5k_test.git"
-SSH_URL="git@gitlab.in2p3.fr:cornebize/g5k_test.git"
+REPO_URL="https://gricad-gitlab.univ-grenoble-alpes.fr/Ezibenroc/g5k_test.git"
+SSH_URL="git@gricad-gitlab.univ-grenoble-alpes.fr:Ezibenroc/g5k_test.git"
 
 token=$(cat $TOKEN_PATH)
 if [ $? -ne 0 ] ; then

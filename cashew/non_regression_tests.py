@@ -21,9 +21,9 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-DEFAULT_CSV_URL_PREFIX = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/'
-DEFAULT_CHANGELOG_URL = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/exp_changelog.csv'
-DEFAULT_OUTLIERLOG_URL = 'https://gitlab.in2p3.fr/cornebize/g5k_test/raw/master/exp_outlierlog.csv'
+DEFAULT_CSV_URL_PREFIX = 'https://gricad-gitlab.univ-grenoble-alpes.fr/Ezibenroc/g5k_test/raw/master/'
+DEFAULT_CHANGELOG_URL = 'https://gricad-gitlab.univ-grenoble-alpes.fr/Ezibenroc/g5k_test/raw/master/exp_changelog.csv'
+DEFAULT_OUTLIERLOG_URL = 'https://gricad-gitlab.univ-grenoble-alpes.fr/Ezibenroc/g5k_test/raw/master/exp_outlierlog.csv'
 DATA_FILES = defaultdict(lambda: 'stats.csv', {
     'mean_gflops': 'stats.csv',
     'mean_gflops_2048': 'stats.csv',
