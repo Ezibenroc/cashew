@@ -68,7 +68,7 @@ def get_unique(df, key):
 def compute_dgemm_reg(df):
     df = df.copy()
     compute_variable_products(df, 'mnk')
-    reg = compute_full_reg(df, 'duration', ['mnk', 'mn', 'mk', 'nk', 'm', 'n', 'k'])
+    reg = compute_full_reg(df, 'duration', ['mnk', 'mk', 'nk'])
     total_flop = (2 * df['m'] * df['n'] * df['k']).sum()
     total_time = df['duration'].sum()
     reg['mean_gflops'] = total_flop / total_time * 1e-9
